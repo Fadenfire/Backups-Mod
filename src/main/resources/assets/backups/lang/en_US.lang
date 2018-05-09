@@ -1,0 +1,54 @@
+backups.started=Started backup
+backups.finished=Finished backup
+backups.failed=Backup failed! Check log for more details
+backups.prefix=[Backups]:
+
+backups.reason.unknown=Unknown
+backups.reason.scheduled=Automatic
+backups.reason.user=User Initiated
+backups.reason.restore=Restore
+
+gui.backups.title=Backups
+gui.backups.calculating=Calculating
+gui.backups.restore=Restore
+gui.backups.clearLabel=Clear Label
+gui.backups.setLabel=Set Label
+gui.backups.enter=Enter backup
+gui.backups.delete=Delete
+gui.backups.confirmDelete=Are you sure you want to delete %s backup(s)?
+gui.backups.confirmRestore1=Are you sure you want to restore %s to %s?
+gui.backups.confirmRestore2=A backup of the world will be made of before it is restored.
+
+commands.backups.backup.usage=/backup
+commands.backups.backup.inProgress=Backup already in progress
+commands.backups.backup.tempWorld=Can't backup when inside a backup
+commands.backups.backup.success=Started backup
+
+commands.backups.restore.usage=/restore <x1> <y1> <z1> <x2> <y2> <z2> <backup>
+commands.backups.restore.invalidDate='%s' is not a valid date
+commands.backups.restore.notABackup=Backup doesn't exist
+commands.backups.restore.success=Restored %s blocks from %s
+
+backups.misc.today=Today
+backups.misc.yesterday=Yesterday
+
+backups.misc.weekday.monday=Monday
+backups.misc.weekday.tuesday=Tuesday
+backups.misc.weekday.wednesday=Wednesday
+backups.misc.weekday.thursday=Thursday
+backups.misc.weekday.friday=Friday
+backups.misc.weekday.saturday=Saturday
+backups.misc.weekday.sunday=Sunday
+
+backups.misc.month.january=January
+backups.misc.month.february=February
+backups.misc.month.march=March
+backups.misc.month.april=April
+backups.misc.month.may=May
+backups.misc.month.june=June
+backups.misc.month.july=July
+backups.misc.month.august=August
+backups.misc.month.september=September
+backups.misc.month.october=October
+backups.misc.month.november=November
+backups.misc.month.december=December

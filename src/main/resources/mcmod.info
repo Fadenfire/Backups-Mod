@@ -1,0 +1,8 @@
+[{
+	"modid": "backups",
+	"name": "Backups",
+	"description": "Makes backups.",
+	"version": "1.0",
+	"mcversion": "${mcversion}",
+	"authorList": ["Silly511"]
+}]
