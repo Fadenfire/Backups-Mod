@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -19,8 +20,9 @@ import net.minecraft.command.WrongUsageException;
 import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.BlockPos;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.gen.structure.StructureBoundingBox;
 import silly511.backups.BackupManager;
@@ -35,12 +37,12 @@ public class RestoreCommand extends CommandBase {
 	public static final DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy/M/d-k:mm:ss");
 
 	@Override
-	public String getCommandName() {
+	public String getName() {
 		return "restore";
 	}
 
 	@Override
-	public String getCommandUsage(ICommandSender sender) {
+	public String getUsage(ICommandSender sender) {
 		return "commands.backups.restore.usage";
 	}
 	
@@ -50,11 +52,11 @@ public class RestoreCommand extends CommandBase {
 	}
 	
 	@Override
-	public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
+	public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, BlockPos pos) {
 		int l = args.length;
 		
 		if (l > 0 && l <= 6)
-			return func_175771_a(args, l > 3 ? 3 : 0, pos);
+			return getTabCompletionCoordinate(args, l > 3 ? 3 : 0, pos);
 		else if (l == 7) {
 			ZoneId timeZone = ZoneId.systemDefault();
 			List<String> list = BackupHelper.listAllBackups(BackupManager.getCurrentBackupsDir()).stream()
@@ -65,7 +67,7 @@ public class RestoreCommand extends CommandBase {
 		} else if (l == 8)
 			return getListOfStringsMatchingLastWord(args, "true", "false");
 		
-		return null;
+		return Collections.emptyList();
 	}
 	
 //	private static List<String> getAllDatesWithBackups(ToIntFunction<ZonedDateTime> function, Predicate<ZonedDateTime> filter) {
@@ -81,8 +83,8 @@ public class RestoreCommand extends CommandBase {
 //	}
 
 	@Override
-	public void processCommand(ICommandSender sender, String[] args) throws CommandException {
-		if (args.length < 7) throw new WrongUsageException(getCommandUsage(sender));
+	public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException {
+		if (args.length < 7) throw new WrongUsageException(getUsage(sender));
 		sender.setCommandStat(CommandResultStats.Type.AFFECTED_BLOCKS, 0);
 		
 		World world = sender.getEntityWorld();
@@ -106,7 +108,7 @@ public class RestoreCommand extends CommandBase {
 			
 			IBlockState state = world.getBlockState(pos);
 			
-			if (!state.getBlock().isFullBlock() && !state.getBlock().isFullCube())
+			if (!state.isFullBlock() && !state.isFullCube())
 				blocks.addFirst(pos);
 			else
 				blocks.addLast(pos);
@@ -117,7 +119,7 @@ public class RestoreCommand extends CommandBase {
 			
 			if (tileEntity instanceof IInventory) ((IInventory) tileEntity).clear();
 			
-			world.setBlockState(pos, Blocks.barrier.getDefaultState(), 2);
+			world.setBlockState(pos, Blocks.BARRIER.getDefaultState(), 2);
 		}
 		
 		int changedCount = 0;
@@ -144,7 +146,7 @@ public class RestoreCommand extends CommandBase {
 		}
 		
 		sender.setCommandStat(CommandResultStats.Type.AFFECTED_BLOCKS, changedCount);
-		notifyOperators(sender, this, "commands.backups.restore.success", changedCount, backup.time.atZone(ZoneId.systemDefault()).format(FormatHelper.dateTimeFormat));
+		notifyCommandListener(sender, this, "commands.backups.restore.success", changedCount, backup.time.atZone(ZoneId.systemDefault()).format(FormatHelper.dateTimeFormat));
 	}
 	
 	public static Backup parseBackup(String[] args, int index) throws CommandException {

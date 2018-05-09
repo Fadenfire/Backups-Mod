@@ -6,53 +6,17 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.IntBuffer;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
-import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
-
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.OpenGlHelper;
-import net.minecraft.client.renderer.texture.TextureUtil;
-import net.minecraft.client.shader.Framebuffer;
+import net.minecraft.util.ScreenShotHelper;
 
 public final class ImageHelper {
 	
-	public static BufferedImage createScreenshot() {
-		Minecraft mc = Minecraft.getMinecraft();
-		Framebuffer framebuffer = mc.getFramebuffer();
-		
-		int width = OpenGlHelper.isFramebufferEnabled() ? framebuffer.framebufferTextureWidth : mc.displayWidth;
-		int height = OpenGlHelper.isFramebufferEnabled() ? framebuffer.framebufferTextureHeight : mc.displayHeight;
-		IntBuffer buffer = BufferUtils.createIntBuffer(width * height);
-		
-		GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 1);
-		GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
-		
-		if (OpenGlHelper.isFramebufferEnabled()) {
-			GlStateManager.bindTexture(framebuffer.framebufferTexture);
-			
-			GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
-		} else {
-			GL11.glReadPixels(0, 0, width, height, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
-		}
-		
-		int[] array = new int[buffer.capacity()];
-		buffer.get(array);
-		TextureUtil.processPixelValues(array, width, height);
-		
-		BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-		image.setRGB(0, 0, width, height, array, 0, width);
-		
-		return image;
-	}
-	
 	public static BufferedImage createIcon(int resultSize) {
-		BufferedImage screenShot = createScreenshot();
+		Minecraft mc = Minecraft.getMinecraft();
+		BufferedImage screenShot = ScreenShotHelper.createScreenshot(mc.displayWidth, mc.displayHeight, mc.getFramebuffer());
 		
 		int size = Math.min(screenShot.getWidth(), screenShot.getHeight());
 		int xOffset = screenShot.getWidth() / 2 - size / 2;

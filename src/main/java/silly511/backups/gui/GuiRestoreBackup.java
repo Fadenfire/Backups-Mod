@@ -20,16 +20,17 @@ import com.google.common.collect.Lists;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.gui.GuiSelectWorld;
 import net.minecraft.client.gui.GuiSlot;
+import net.minecraft.client.gui.GuiWorldSelection;
 import net.minecraft.client.gui.GuiYesNo;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.crash.CrashReport;
-import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.ReportedException;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.text.TextFormatting;
+import net.minecraft.world.storage.WorldSummary;
 import silly511.backups.BackupsMod;
 import silly511.backups.Config;
 import silly511.backups.helpers.BackupHelper;
@@ -43,7 +44,7 @@ public class GuiRestoreBackup extends GuiScreen {
 	
 	public static final ResourceLocation MISSING_ICON = new ResourceLocation("textures/misc/unknown_server.png");
 	
-	private GuiSelectWorld parentScreen;
+	private GuiWorldSelection parentScreen;
 	private String worldName;
 	private File worldDir;
 	private File backupsDir;
@@ -57,14 +58,14 @@ public class GuiRestoreBackup extends GuiScreen {
 	private GuiButton enterButton;
 	private GuiButton deleteButton;
 	
-	public GuiRestoreBackup(GuiSelectWorld guiSelectWorld) {
+	public GuiRestoreBackup(GuiWorldSelection guiSelectWorld) {
 		parentScreen = guiSelectWorld;
 		
-		String worldDirName = guiSelectWorld.func_146621_a(guiSelectWorld.selectedIndex);
-		worldName = guiSelectWorld.func_146614_d(guiSelectWorld.selectedIndex);
+		WorldSummary worldSummary = guiSelectWorld.selectionList.getSelectedWorld().worldSummary;
 		
-		worldDir = new File("saves", worldDirName);
-		backupsDir = new File(Config.backupsPath, worldDirName);
+		worldName = worldSummary.getDisplayName();
+		worldDir = new File("saves", worldSummary.getFileName());
+		backupsDir = new File(Config.backupsPath, worldSummary.getFileName());
 	}
 	
 	@Override
@@ -94,8 +95,8 @@ public class GuiRestoreBackup extends GuiScreen {
 		
 		String size = list.totalDirSize != -1 ? FormatHelper.shortenNumber(list.totalDirSize, 1024) + "Bs" : calculatingText;
 		
-		drawCenteredString(fontRendererObj, I18n.format("gui.backups.title"), width / 2, 20, 0xFFFFFF);
-		drawString(fontRendererObj, size, width - 5 - fontRendererObj.getStringWidth(size), 20, 0xFFFFFF);
+		drawCenteredString(fontRenderer, I18n.format("gui.backups.title"), width / 2, 20, 0xFFFFFF);
+		drawString(fontRenderer, size, width - 5 - fontRenderer.getStringWidth(size), 20, 0xFFFFFF);
 		super.drawScreen(mouseX, mouseY, partialTicks);
 	}
 	
@@ -223,23 +224,23 @@ public class GuiRestoreBackup extends GuiScreen {
 		protected void drawBackground() {}
 		
 		@Override
-		protected void drawSlot(int entryID, int x, int y, int height, int mouseX, int mouseY) {
+		protected void drawSlot(int entryID, int x, int y, int height, int mouseX, int mouseY, float partialTicks) {
 			BackupsListEntry entry = entries.get(entryID);
 			
 			Backup backup = entry.backup;
 			String time = backup.time.atZone(ZoneId.systemDefault()).format(FormatHelper.dateTimeFormat);
 			String reason = I18n.format(backup.reason != null ? backup.reason.tranKey : "backups.reason.unknown");
 			String size = entry.size != -1 ? FormatHelper.shortenNumber(entry.size, 1024) + "Bs" : calculatingText;
-			String title = backup.getLabel() == null ? time : EnumChatFormatting.UNDERLINE + backup.getLabel() + EnumChatFormatting.RESET + "" + EnumChatFormatting.GRAY + " (" + time + ")";
+			String title = backup.getLabel() == null ? time : TextFormatting.UNDERLINE + backup.getLabel() + TextFormatting.RESET + "" + TextFormatting.GRAY + " (" + time + ")";
 			
-			fontRendererObj.drawString(title, x + 27, y + 1, 0xFFFFFF);
-			fontRendererObj.drawString(reason + ", " + backup.mcVersion + " (" + size + ")", x + 27, y + 12, 0x808080);
+			fontRenderer.drawString(title, x + 27, y + 1, 0xFFFFFF);
+			fontRenderer.drawString(reason + ", " + backup.mcVersion + " (" + size + ")", x + 27, y + 12, 0x808080);
 			
 			if (entry.header != null) {
 				int x2 = Math.max(x - 120, 5);
 				
 				drawHorizontalLine(x2, x + getListWidth(), y - 4, 0xFFA9A9A9);
-				fontRendererObj.drawString(entry.header, x2, y - 2, 0xA9A9A9);
+				fontRenderer.drawString(entry.header, x2, y - 2, 0xA9A9A9);
 			}
 			
 			mc.getTextureManager().bindTexture(entry.iconLoc == null ? MISSING_ICON : entry.iconLoc);
@@ -252,7 +253,7 @@ public class GuiRestoreBackup extends GuiScreen {
 		}
 		
 		@Override
-		protected void drawSelectionBox(int x, int y, int mouseX, int mouseY) {
+		protected void drawSelectionBox(int x, int y, int mouseX, int mouseY, float partialTicks) {
 			int size = getSize();
 			
 			for (int i = 0; i < size; i++) {
@@ -266,7 +267,7 @@ public class GuiRestoreBackup extends GuiScreen {
 					drawRect(minX + 1, slotY + 1, maxX - 1, slotY + slotHeight - 4, 0xFF000000);
 				}
 				
-				drawSlot(i, x, slotY + 2, slotHeight - 4, mouseX, mouseY);
+				drawSlot(i, x, slotY + 2, slotHeight - 4, mouseX, mouseY, partialTicks);
 			}
 		}
 		

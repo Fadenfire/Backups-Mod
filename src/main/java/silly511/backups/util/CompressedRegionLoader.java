@@ -19,7 +19,8 @@ import net.minecraft.init.Blocks;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
-import net.minecraft.util.BlockPos;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.chunk.NibbleArray;
 import silly511.backups.BackupsMod;
 
@@ -37,7 +38,7 @@ public class CompressedRegionLoader {
 		if (chunk.isEmpty) return null;
 		
 		IBlockState state = chunk.blockStates[pos.getX() & 15][pos.getY()][pos.getZ() & 15];
-		return state == null ? Blocks.air.getDefaultState() : state;
+		return state == null ? Blocks.AIR.getDefaultState() : state;
 	}
 	
 	public NBTTagCompound getTileEntityData(BlockPos pos) {
@@ -52,13 +53,13 @@ public class CompressedRegionLoader {
 		ChunkData chunkData = chunkCache.get(pos);
 		
 		if (chunkData == null) {
-			File regionFile = new File(regionDir, "r." + (pos.chunkXPos >> 5) + "." + (pos.chunkZPos >> 5) + ".mca");
+			File regionFile = new File(regionDir, "r." + (pos.x >> 5) + "." + (pos.z >> 5) + ".mca");
 			
 			if (regionFile.exists())
 				try (DataInputStream stream = new DataInputStream(new InflaterInputStream(new FileInputStream(regionFile)))) {
-					chunkData = new ChunkData(getChunkNBT(stream, pos.chunkXPos & 31, pos.chunkZPos & 31));
+					chunkData = new ChunkData(getChunkNBT(stream, pos.x & 31, pos.z & 31));
 				} catch (IOException ex) {
-					BackupsMod.logger.warn("Unable to read chunk " + pos.chunkXPos + ", " + pos.chunkZPos, ex);
+					BackupsMod.logger.warn("Unable to read chunk " + pos.x + ", " + pos.z, ex);
 					
 					chunkData = new ChunkData();
 				}

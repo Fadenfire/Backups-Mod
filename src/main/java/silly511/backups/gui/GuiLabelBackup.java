@@ -30,7 +30,7 @@ public class GuiLabelBackup extends GuiScreen {
 		buttonList.add(submitButton = new GuiButton(0, width / 2 - 100, height / 4 + 108, I18n.format("gui.backups.setLabel")));
 		buttonList.add(new GuiButton(1, width / 2 - 100, height / 4 + 132, I18n.format("gui.cancel")));
 		
-		textField = new GuiTextField(2, fontRendererObj, this.width / 2 - 100, 60, 200, 20);
+		textField = new GuiTextField(2, fontRenderer, this.width / 2 - 100, 60, 200, 20);
 		textField.setFocused(true);
 		
 		if (submitButton.enabled = backup.getLabel() != null)

@@ -4,15 +4,16 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.ChatComponentText;
-import net.minecraft.util.ChatComponentTranslation;
-import net.minecraft.util.ChatStyle;
-import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.text.Style;
+import net.minecraft.util.text.TextComponentString;
+import net.minecraft.util.text.TextComponentTranslation;
+import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.MinecraftException;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.relauncher.Side;
@@ -21,7 +22,8 @@ import silly511.backups.helpers.BackupHelper;
 import silly511.backups.helpers.BackupHelper.BackupReason;
 import silly511.backups.helpers.ImageHelper;
 
-public final class BackupManager {
+@EventBusSubscriber
+public class BackupManager {
 		
 	private static long nextBackupTime;
 	private volatile static BackupThread thread;
@@ -33,7 +35,7 @@ public final class BackupManager {
 	}
 	
 	@SubscribeEvent
-	public void serverTick(TickEvent.ServerTickEvent event) {
+	public static void serverTick(TickEvent.ServerTickEvent event) {
 		if (Config.backupInterval > 0 && thread == null && System.nanoTime() - nextBackupTime >= 0)
 			startBackup(BackupReason.SCHEDULED);
 		
@@ -48,7 +50,7 @@ public final class BackupManager {
 	
 	@SubscribeEvent
 	@SideOnly(Side.CLIENT)
-	public void worldRenderLast(RenderWorldLastEvent event) {
+	public static void worldRenderLast(RenderWorldLastEvent event) {
 		if (thread != null && thread.icon == null)
 			thread.icon = ImageHelper.createIcon(64);
 	}
@@ -81,12 +83,12 @@ public final class BackupManager {
 	private static void disableSaving() {
 		MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
 		
-		server.getConfigurationManager().saveAllPlayerData();
+		server.getPlayerList().saveAllPlayerData();
 		
-		oldSaveStates = new boolean[server.worldServers.length];
+		oldSaveStates = new boolean[server.worlds.length];
 		
 		for (int i = 0; i < oldSaveStates.length; i++) {
-			WorldServer worldServer = server.worldServers[i];
+			WorldServer worldServer = server.worlds[i];
 			if (worldServer == null) continue;
 			
 			oldSaveStates[i] = worldServer.disableLevelSaving;
@@ -106,7 +108,7 @@ public final class BackupManager {
 		MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
 		
 		for (int i = 0; i < oldSaveStates.length; i++) {
-			WorldServer worldServer = server.worldServers[i];
+			WorldServer worldServer = server.worlds[i];
 			
 			if (worldServer != null)
 				worldServer.disableLevelSaving = oldSaveStates[i];
@@ -114,10 +116,10 @@ public final class BackupManager {
 	}
 	
 	private static void postTagMessage(String msg) {
-		FMLCommonHandler.instance().getMinecraftServerInstance().getConfigurationManager().sendChatMsg(new ChatComponentText("")
-				.appendSibling(new ChatComponentTranslation("backups.prefix").setChatStyle(new ChatStyle().setColor(EnumChatFormatting.BLUE).setBold(true)))
+		FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList().sendMessage(new TextComponentString("")
+				.appendSibling(new TextComponentTranslation("backups.prefix").setStyle(new Style().setColor(TextFormatting.BLUE).setBold(true)))
 				.appendText(" ")
-				.appendSibling(new ChatComponentTranslation(msg)));
+				.appendSibling(new TextComponentTranslation(msg)));
 	}
 	
 	public static class BackupThread extends Thread {

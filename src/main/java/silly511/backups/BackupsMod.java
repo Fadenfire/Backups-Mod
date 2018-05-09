@@ -7,11 +7,11 @@ import java.nio.file.LinkOption;
 
 import org.apache.logging.log4j.Logger;
 
-import net.minecraft.client.gui.GuiSelectWorld;
+import net.minecraft.client.gui.GuiWorldSelection;
 import net.minecraftforge.client.event.GuiScreenEvent;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLServerStartedEvent;
@@ -25,6 +25,7 @@ import silly511.backups.commands.RestoreCommand;
 import silly511.backups.gui.BackupsButton;
 import silly511.backups.helpers.FileHelper;
 
+@EventBusSubscriber
 @Mod(modid = "backups", name = "Backups", version = "1.0", acceptableRemoteVersions = "*")
 public class BackupsMod {
 		
@@ -35,9 +36,6 @@ public class BackupsMod {
 		logger = event.getModLog();
 		
 		Config.load(event.getSuggestedConfigurationFile());
-		
-		MinecraftForge.EVENT_BUS.register(this);
-		MinecraftForge.EVENT_BUS.register(new BackupManager());
 	}
 	
 	@EventHandler
@@ -65,11 +63,11 @@ public class BackupsMod {
 	
 	@SubscribeEvent
 	@SideOnly(Side.CLIENT)
-	public void onGuiInit(GuiScreenEvent.InitGuiEvent.Post event) {
-		if (event.gui instanceof GuiSelectWorld) {
-			GuiSelectWorld gui = (GuiSelectWorld) event.gui;
+	public static void onGuiInit(GuiScreenEvent.InitGuiEvent.Post event) {
+		if (event.getGui() instanceof GuiWorldSelection) {
+			GuiWorldSelection gui = (GuiWorldSelection) event.getGui();
 			
-			event.buttonList.replaceAll(button -> button == gui.recreateButton ? gui.recreateButton = new BackupsButton(button, gui) : button);
+			event.getButtonList().replaceAll(button -> button == gui.copyButton ? gui.copyButton = new BackupsButton(button, gui) : button);
 		}
 	}
 
