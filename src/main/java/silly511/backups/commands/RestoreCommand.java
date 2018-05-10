@@ -153,9 +153,9 @@ public class RestoreCommand extends CommandBase {
 		try {
 			int backupsAgo = Integer.parseInt(args[index]);
 			if (backupsAgo < 1) throw new NumberInvalidException("commands.generic.num.tooSmall", backupsAgo, 1);
-			if (backupsAgo >= backups.size()) throw new CommandException("commands.backups.restore.notABackup");
+			if (backupsAgo > backups.size()) throw new CommandException("commands.backups.restore.notABackup");
 			
-			return backups.get(backupsAgo);
+			return backups.get(backupsAgo - 1);
 		} catch (NumberFormatException ex) {
 			try {
 				long time = LocalDateTime.parse(args[index], dateFormat).atZone(ZoneId.systemDefault()).toEpochSecond();

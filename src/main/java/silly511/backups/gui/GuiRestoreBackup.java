@@ -318,15 +318,20 @@ public class GuiRestoreBackup extends GuiScreen {
 				this.backup = backup;
 				this.header = header;
 				
-				if (backup.iconData != null)
-					try {
-						BufferedImage image = ImageHelper.fromCompressedBytes(backup.iconData, 64, 64);
-						iconLoc = new ResourceLocation("backups:backup/" + worldDir.getName() + "/" + backup.dir.getName() + "/icon");
-						
-						mc.getTextureManager().loadTexture(iconLoc, new DynamicTexture(image));
-					} catch (IOException ex) {
-						BackupsMod.logger.warn("Unable to load icon for backup " + backup.time, ex);
-					}
+				if (backup.iconData != null) {
+					iconLoc = new ResourceLocation(BackupsMod.modid, "backup/" + worldDir.getName() + "/" + backup.dir.getName() + "/icon");
+					
+					if (mc.getTextureManager().getTexture(iconLoc) == null)
+						try {
+							BufferedImage image = ImageHelper.fromCompressedBytes(backup.iconData, 64, 64);
+							
+							mc.getTextureManager().loadTexture(iconLoc, new DynamicTexture(image));
+						} catch (IOException ex) {
+							BackupsMod.logger.warn("Unable to load icon for backup " + backup.time, ex);
+							
+							iconLoc = null;
+						}
+				}
 			}
 			
 		}

@@ -68,6 +68,7 @@ public final class ImageHelper {
 	}
 	
 	public static byte[] toCompressedBytes(BufferedImage image) {
+		if (image == null) return null;
 		ByteArrayOutputStream byteArrayStream = new ByteArrayOutputStream();
 		
 		try (DeflaterOutputStream stream = new DeflaterOutputStream(byteArrayStream)) {
