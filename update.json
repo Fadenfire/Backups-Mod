@@ -1,0 +1,14 @@
+{
+  "homepage": "https://minecraft.curseforge.com/projects/backups",
+  "promos": {
+    "1.8.9-recommended": "1.1",
+    "1.12.2-recommended": "1.1"
+  },
+  
+  "1.8.9": {
+    "1.1": "Added forge update checker.\nFixed crash on servers.\nFixed creating duplicate textures every time you opened the backups GUI.\nFixed restore command using wrong backup."
+  },
+  "1.12.2": {
+    "1.1": "Added forge update checker.\nFixed crash on servers.\nFixed creating duplicate textures every time you opened the backups GUI.\nFixed restore command using wrong backup."
+  }
+}
