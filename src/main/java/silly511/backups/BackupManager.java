@@ -20,6 +20,7 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import silly511.backups.helpers.BackupHelper;
 import silly511.backups.helpers.BackupHelper.BackupReason;
+import silly511.backups.helpers.FileHelper;
 import silly511.backups.helpers.ImageHelper;
 
 @EventBusSubscriber
@@ -66,7 +67,7 @@ public class BackupManager {
 	}
 	
 	public static File getCurrentBackupsDir() {
-		return new File(Config.backupsPath, DimensionManager.getCurrentSaveRootDirectory().getName());
+		return new File(Config.backupsDir, DimensionManager.getCurrentSaveRootDirectory().getName());
 	}
 	
 	public static boolean isBackingUp() {
@@ -74,10 +75,7 @@ public class BackupManager {
 	}
 	
 	public static boolean isTempWorld() {
-		File savesDir = FMLCommonHandler.instance().getSavesDirectory();
-		File worldDir = DimensionManager.getCurrentSaveRootDirectory();
-		
-		return worldDir.getAbsolutePath().startsWith(new File(savesDir, "tempWorlds").getAbsolutePath());
+		return FileHelper.equals(DimensionManager.getCurrentSaveRootDirectory().getParentFile(), new File("tempWorlds"));
 	}
 	
 	private static void disableSaving() {
@@ -147,7 +145,9 @@ public class BackupManager {
 					while (icon == null)
 						try { sleep(20); } catch (InterruptedException ex) {}
 				
-				BackupHelper.trimBackups(backupsDir);
+				if (Config.trimming.trimmingEnabled)
+					BackupHelper.trimBackups(backupsDir);
+				
 				BackupHelper.backup(worldDir, backupsDir, reason, icon);
 			} catch (Exception ex) {
 				errored = true;

@@ -30,6 +30,7 @@ import net.minecraft.crash.CrashReport;
 import net.minecraft.util.ReportedException;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.text.TextFormatting;
+import net.minecraft.world.chunk.storage.RegionFileCache;
 import net.minecraft.world.storage.WorldSummary;
 import silly511.backups.BackupsMod;
 import silly511.backups.Config;
@@ -39,6 +40,7 @@ import silly511.backups.helpers.BackupHelper.BackupReason;
 import silly511.backups.helpers.FileHelper;
 import silly511.backups.helpers.FormatHelper;
 import silly511.backups.helpers.ImageHelper;
+import silly511.backups.util.LoadFromBackupMap;
 
 public class GuiRestoreBackup extends GuiScreen {
 	
@@ -65,7 +67,7 @@ public class GuiRestoreBackup extends GuiScreen {
 		
 		worldName = worldSummary.getDisplayName();
 		worldDir = new File("saves", worldSummary.getFileName());
-		backupsDir = new File(Config.backupsPath, worldSummary.getFileName());
+		backupsDir = new File(Config.backupsDir, worldSummary.getFileName());
 	}
 	
 	@Override
@@ -115,11 +117,18 @@ public class GuiRestoreBackup extends GuiScreen {
 		} else if (button.id == 2) {
 			mc.displayGuiScreen(new GuiLabelBackup(this, backup));
 		} else if (button.id == 3) {
-			String tempWorldDir = "tempWorlds" + File.separatorChar + new Random().nextInt();
+			File tempWorldDir = new File("tempWorlds", String.valueOf(new Random().nextInt()));
 			
-			BackupHelper.restoreBackup(backup.dir, new File("saves", tempWorldDir));
+			//Restore backup to temp dir, but without region files
+			BackupHelper.restoreBackup(backup.dir, tempWorldDir, f -> f.getName().endsWith(".mca"));
 			
-			mc.launchIntegratedServer(tempWorldDir, worldName, null);
+			//Add custom region file cache that will load region files from the backup
+			synchronized (RegionFileCache.class) {
+				RegionFileCache.clearRegionFileReferences();
+				RegionFileCache.REGIONS_BY_FILE = new LoadFromBackupMap(backup.dir, tempWorldDir);
+			}
+			
+			mc.launchIntegratedServer(".." + File.separator + tempWorldDir, worldName, null);
 		} else if (button.id == 4) {
 			String message = I18n.format("gui.backups.confirmDelete", list.selected.size());
 			
@@ -140,7 +149,7 @@ public class GuiRestoreBackup extends GuiScreen {
 				mc.displayGuiScreen(this);
 			} else if (id == 0) {
 				BackupHelper.backup(worldDir, backupsDir, BackupReason.RESTORE, null);
-				BackupHelper.restoreBackup(backup.dir, worldDir);
+				BackupHelper.restoreBackup(backup.dir, worldDir, null);
 				BackupHelper.setLastBackup(backupsDir, backup.dir);
 				
 				mc.displayGuiScreen(parentScreen);
@@ -328,7 +337,7 @@ public class GuiRestoreBackup extends GuiScreen {
 							
 							mc.getTextureManager().loadTexture(iconLoc, new DynamicTexture(image));
 						} catch (IOException ex) {
-							BackupsMod.logger.warn("Unable to load icon for backup " + backup.time, ex);
+							BackupsMod.logger.error("Unable to load icon for backup " + backup.time, ex);
 							
 							iconLoc = null;
 						}

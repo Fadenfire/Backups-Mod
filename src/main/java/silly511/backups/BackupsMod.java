@@ -4,12 +4,16 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.util.HashMap;
 
 import org.apache.logging.log4j.Logger;
 
 import net.minecraft.client.gui.GuiWorldSelection;
+import net.minecraft.world.chunk.storage.RegionFileCache;
 import net.minecraftforge.client.event.GuiScreenEvent;
-import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.minecraftforge.common.config.Config;
+import net.minecraftforge.common.config.ConfigManager;
+import net.minecraftforge.fml.client.event.ConfigChangedEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.Mod.EventHandler;
@@ -26,7 +30,7 @@ import silly511.backups.gui.BackupsButton;
 import silly511.backups.helpers.FileHelper;
 
 @EventBusSubscriber
-@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.1", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
+@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.2", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
 public class BackupsMod {
 	
 	public static final String modid = "backups";
@@ -36,8 +40,6 @@ public class BackupsMod {
 	@EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
 		logger = event.getModLog();
-		
-		Config.load(event.getSuggestedConfigurationFile());
 	}
 	
 	@EventHandler
@@ -53,14 +55,20 @@ public class BackupsMod {
 	
 	@EventHandler
 	public void serverStopped(FMLServerStoppedEvent event) {
-		File tempWorldsDir = new File(FMLCommonHandler.instance().getSavesDirectory(), "tempWorlds");
+		File tempWorldsDir = new File("tempWorlds");
 		
-		if (Files.isDirectory(tempWorldsDir.toPath(), LinkOption.NOFOLLOW_LINKS))
+		if (Files.isDirectory(tempWorldsDir.toPath(), LinkOption.NOFOLLOW_LINKS)) {
+			synchronized (RegionFileCache.class) {
+				RegionFileCache.clearRegionFileReferences();
+				RegionFileCache.REGIONS_BY_FILE = new HashMap<>();
+			}
+			
 			try {
 				FileHelper.deleteDirectory(tempWorldsDir);
 			} catch (IOException ex) {
 				logger.error("Unable to delete temp worlds", ex);
 			}
+		}
 	}
 	
 	@SubscribeEvent
@@ -71,6 +79,11 @@ public class BackupsMod {
 			
 			event.getButtonList().replaceAll(button -> button == gui.copyButton ? gui.copyButton = new BackupsButton(button, gui) : button);
 		}
+	}
+	
+	@SubscribeEvent
+	public static void configChanged(ConfigChangedEvent event) {
+		if (event.getModID().equals(modid)) ConfigManager.sync(modid, Config.Type.INSTANCE);
 	}
 
 }
