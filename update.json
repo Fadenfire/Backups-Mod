@@ -1,14 +1,16 @@
 {
   "homepage": "https://minecraft.curseforge.com/projects/backups",
   "promos": {
-    "1.8.9-recommended": "1.1",
-    "1.12.2-recommended": "1.1"
+    "1.8.9-recommended": "1.2",
+    "1.12.2-recommended": "1.2"
   },
   
   "1.8.9": {
-    "1.1": "Added forge update checker.\nFixed crash on servers.\nFixed creating duplicate textures every time you opened the backups GUI.\nFixed restore command using wrong backup."
+    "1.1": "Added forge update checker.\nFixed crash on servers.\nFixed creating duplicate textures every time you opened the backups GUI.\nFixed restore command using wrong backup.",
+    "1.2": "When entering a backup, region files are now copied on demand instead of all at once. This will greatly speed up entering a backup and decrease load on the disk.\nBackup trimming is now configurable.\nFixed some things that could've cause errors in the future."
   },
   "1.12.2": {
-    "1.1": "Added forge update checker.\nFixed crash on servers.\nFixed creating duplicate textures every time you opened the backups GUI.\nFixed restore command using wrong backup."
+    "1.1": "Added forge update checker.\nFixed crash on servers.\nFixed creating duplicate textures every time you opened the backups GUI.\nFixed restore command using wrong backup.",
+    "1.2": "When entering a backup, region files are now copied on demand instead of all at once. This will greatly speed up entering a backup and decrease load on the disk.\nBackup trimming is now configurable.\nFixed some things that could've cause errors in the future."
   }
 }
