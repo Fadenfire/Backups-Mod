@@ -12,7 +12,6 @@ import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,18 +20,19 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.zip.DeflaterInputStream;
 import java.util.zip.InflaterInputStream;
 
 import org.apache.commons.io.FileUtils;
 
-import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.common.ForgeVersion;
 import silly511.backups.BackupsMod;
+import silly511.backups.Config;
 import silly511.backups.util.IORunnable;
 
 public final class BackupHelper {
@@ -55,7 +55,7 @@ public final class BackupHelper {
 		FileUtils.forceMkdir(currentBackup);
 		FileHelper.cleanDirectory(currentBackup);
 		
-		List<Runnable> fileCopyTasks = new LinkedList<>();
+//		List<Runnable> fileCopyTasks = new LinkedList<>();
 		List<IORunnable> attributeCopyTasks = new LinkedList<>();
 		
 		for (File file : FileHelper.listFiles(sourceDir, false)) {
@@ -70,13 +70,9 @@ public final class BackupHelper {
 			else if (Files.isSymbolicLink(sourceFile))
 				Files.createSymbolicLink(currentFile, Files.readSymbolicLink(sourceFile));
 			else
-				fileCopyTasks.add(() -> {
-					try (InputStream stream = new DeflaterInputStream(new FileInputStream(file))) {
-						Files.copy(stream, currentFile, StandardCopyOption.REPLACE_EXISTING);
-					} catch (IOException ex) {
-						Throwables.propagate(ex);
-					}
-				});
+				try (InputStream stream = new DeflaterInputStream(new FileInputStream(file))) {
+					Files.copy(stream, currentFile, StandardCopyOption.REPLACE_EXISTING);
+				}
 			
 			attributeCopyTasks.add(() -> {
 				if (Files.exists(currentFile))
@@ -84,7 +80,7 @@ public final class BackupHelper {
 			});
 		}
 		
-		fileCopyTasks.parallelStream().forEach(Runnable::run); //Compress files in parallel
+//		fileCopyTasks.parallelStream().forEach(Runnable::run); //Compress files in parallel
 		for (IORunnable t : attributeCopyTasks) t.run(); //Copy attributes last
 		
 		File finalBackupDir = new File(backupsDir, time.atZone(ZoneId.systemDefault()).format(dateFormat));
@@ -103,7 +99,7 @@ public final class BackupHelper {
 		setLastBackup(backupsDir, finalBackupDir);
 	}
 	
-	public static void restoreBackup(File backupDir, File targetDir) throws IOException {
+	public static void restoreBackup(File backupDir, File targetDir, Predicate<File> filter) throws IOException {
 		FileUtils.forceMkdir(targetDir);
 		FileHelper.cleanDirectory(targetDir);
 		
@@ -112,7 +108,7 @@ public final class BackupHelper {
 		File metadataFile = new File(backupDir, "backupMetadata.dat");
 		
 		for (File file : FileHelper.listFiles(backupDir, false)) {
-			if (FileHelper.equals(file, metadataFile)) continue;
+			if ((filter != null && filter.test(file)) || file.equals(metadataFile)) continue;
 			
 			Path backupFile = file.toPath();
 			Path targetFile = FileHelper.relativize(backupDir, file, targetDir);
@@ -126,7 +122,7 @@ public final class BackupHelper {
 					try (InputStream stream = new InflaterInputStream(new FileInputStream(file))) {
 						Files.copy(stream, targetFile, StandardCopyOption.REPLACE_EXISTING);
 					} catch (IOException ex) {
-						BackupsMod.logger.warn("Unable to restore " + file.getName(), ex);
+						BackupsMod.logger.error("Unable to restore " + file.getName(), ex);
 						
 						targetFile.toFile().delete();
 					}
@@ -149,29 +145,29 @@ public final class BackupHelper {
 		
 		ZoneId timeZone = ZoneId.systemDefault();
 		long currentDay = LocalDate.now().toEpochDay();
+		long currentSec = Instant.now().getEpochSecond();
 		
 		for (Backup backup : listAllBackups(backupsDir)) {
 			if (backup.label != null) continue;
 			
-			ZonedDateTime time = backup.time.atZone(timeZone);
-			long day = time.toLocalDate().toEpochDay();
-			long fromNow = currentDay - day;
+			long day = backup.time.atZone(timeZone).toLocalDate().toEpochDay();
+			long sec = backup.time.getEpochSecond();
 			
 			boolean shouldDelete = false;
 				
-			if (fromNow >= 30) //After a month, trim to every week
+			if (currentDay - day >= Config.perWeek) //After 8+ days, trim to every week
 				shouldDelete = !set1.add((day + 3) / 7);
-			else if (fromNow >= 3) //After 3 days, trim to every day
+			else if (currentDay - day >= Config.perDay) //After 1-7 days, trim to every day
 				shouldDelete = !set2.add(day);
-			else if (fromNow >= 1) //After a day, trim to every hour
-				shouldDelete = !set3.add(backup.time.getEpochSecond() / (60 * 60));
+			else if (currentSec - sec >= Config.perHour * 3600) //After 1-24 hours, trim to every hour
+				shouldDelete = !set3.add(sec / 3600);
 			
 			if (shouldDelete)
 				try {
 					deleteBackup(backup);
 					BackupsMod.logger.info("Trimming backup " + backup.time);
 				} catch (IOException ex) {
-					BackupsMod.logger.warn("Unable to trim backup " + backup.time, ex);
+					BackupsMod.logger.error("Unable to trim backup " + backup.time, ex);
 				}
 		}
 	}

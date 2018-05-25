@@ -4,13 +4,14 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.util.HashMap;
 
 import org.apache.logging.log4j.Logger;
 
 import net.minecraft.client.gui.GuiSelectWorld;
+import net.minecraft.world.chunk.storage.RegionFileCache;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
@@ -25,7 +26,7 @@ import silly511.backups.commands.RestoreCommand;
 import silly511.backups.gui.BackupsButton;
 import silly511.backups.helpers.FileHelper;
 
-@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.1", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
+@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.2", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
 public class BackupsMod {
 	
 	public static final String modid = "backups";
@@ -55,14 +56,20 @@ public class BackupsMod {
 	
 	@EventHandler
 	public void serverStopped(FMLServerStoppedEvent event) {
-		File tempWorldsDir = new File(FMLCommonHandler.instance().getSavesDirectory(), "tempWorlds");
+		File tempWorldsDir = new File("tempWorlds");
 		
-		if (Files.isDirectory(tempWorldsDir.toPath(), LinkOption.NOFOLLOW_LINKS))
+		if (Files.isDirectory(tempWorldsDir.toPath(), LinkOption.NOFOLLOW_LINKS)) {
+			synchronized (RegionFileCache.class) {
+				RegionFileCache.clearRegionFileReferences();
+				RegionFileCache.regionsByFilename = new HashMap<>();
+			}
+				
 			try {
 				FileHelper.deleteDirectory(tempWorldsDir);
 			} catch (IOException ex) {
 				logger.error("Unable to delete temp worlds", ex);
 			}
+		}
 	}
 	
 	@SubscribeEvent

@@ -58,7 +58,7 @@ public class CompressedRegionLoader {
 				try (DataInputStream stream = new DataInputStream(new InflaterInputStream(new FileInputStream(regionFile)))) {
 					chunkData = new ChunkData(getChunkNBT(stream, pos.chunkXPos & 31, pos.chunkZPos & 31));
 				} catch (IOException ex) {
-					BackupsMod.logger.warn("Unable to read chunk " + pos.chunkXPos + ", " + pos.chunkZPos, ex);
+					BackupsMod.logger.error("Unable to read chunk " + pos.chunkXPos + ", " + pos.chunkZPos, ex);
 					
 					chunkData = new ChunkData();
 				}

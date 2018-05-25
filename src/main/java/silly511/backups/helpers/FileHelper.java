@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.SystemUtils;
 
 public final class FileHelper {
@@ -49,12 +50,16 @@ public final class FileHelper {
 		Files.delete(dir.toPath());
 	}
 	
+	public static File normalize(File file) {
+		return new File(FilenameUtils.normalize(file.getAbsolutePath()));
+	}
+	
 	public static Path relativize(File fileParent, File file, File newParent) {
 		return newParent.toPath().resolve(fileParent.toPath().relativize(file.toPath()));
 	}
 	
 	public static boolean equals(File f1, File f2) {
-		return f1.getAbsoluteFile().equals(f2.getAbsoluteFile());
+		return FilenameUtils.normalize(f1.getAbsolutePath()).equals(FilenameUtils.normalize(f2.getAbsolutePath()));
 	}
 	
 	public static void copyAttributes(Path source, Path target) throws IOException {
@@ -69,7 +74,7 @@ public final class FileHelper {
 			String fetchTimeCommand = "GetFileInfo -P -d \"" + source.toAbsolutePath() + "\"";
 			String setTimeCommand = "SetFile -P -d \"$(" + fetchTimeCommand + ")\" \"" + target.toAbsolutePath() + "\"";
 			
-			new ProcessBuilder("bash", "-c", setTimeCommand).start();
+			new ProcessBuilder("/bin/bash", "-c", setTimeCommand).start();
 		}
 	}
 	
