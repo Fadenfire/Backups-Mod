@@ -221,6 +221,14 @@ public class GuiRestoreBackup extends GuiScreen {
 			
 			restoreButton.enabled = clearLabelButton.enabled = setLabelButton.enabled = enterButton.enabled = selected.size() == 1;
 			deleteButton.enabled = selected.size() > 0;
+			
+			if (isDoubleClick && enterButton.enabled)
+				try {
+					GuiRestoreBackup.this.actionPerformed(enterButton);
+				} catch (Exception ex) {
+					CrashReport crashReport = CrashReport.makeCrashReport(ex, "Handling button press");
+					throw new ReportedException(crashReport);
+				}
 		}
 		
 		@Override

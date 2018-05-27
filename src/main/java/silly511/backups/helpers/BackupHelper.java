@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -49,13 +50,13 @@ public final class BackupHelper {
 	
 	public static void backup(File sourceDir, File backupsDir, BackupReason reason, BufferedImage icon) throws IOException {
 		File currentBackup = new File(backupsDir, "In-Progress");
-		File lastBackup = new File(backupsDir, "Last");
+		File lastBackup = getLastBackup(backupsDir);
 		Instant time = Instant.now();
 		
 		FileUtils.forceMkdir(currentBackup);
 		FileHelper.cleanDirectory(currentBackup);
 		
-//		List<Runnable> fileCopyTasks = new LinkedList<>();
+		List<Runnable> fileCopyTasks = new LinkedList<>();
 		List<IORunnable> attributeCopyTasks = new LinkedList<>();
 		
 		for (File file : FileHelper.listFiles(sourceDir, false)) {
@@ -70,9 +71,13 @@ public final class BackupHelper {
 			else if (Files.isSymbolicLink(sourceFile))
 				Files.createSymbolicLink(currentFile, Files.readSymbolicLink(sourceFile));
 			else
-				try (InputStream stream = new DeflaterInputStream(new FileInputStream(file))) {
-					Files.copy(stream, currentFile, StandardCopyOption.REPLACE_EXISTING);
-				}
+				fileCopyTasks.add(() -> {
+					try (InputStream stream = new DeflaterInputStream(new FileInputStream(file))) {
+						Files.copy(stream, currentFile, StandardCopyOption.REPLACE_EXISTING);
+					} catch (IOException ex) {
+						throw new RuntimeException(ex);
+					}
+				});
 			
 			attributeCopyTasks.add(() -> {
 				if (Files.exists(currentFile))
@@ -80,7 +85,7 @@ public final class BackupHelper {
 			});
 		}
 		
-//		fileCopyTasks.parallelStream().forEach(Runnable::run); //Compress files in parallel
+		fileCopyTasks.parallelStream().forEach(Runnable::run); //Compress files in parallel
 		for (IORunnable t : attributeCopyTasks) t.run(); //Copy attributes last
 		
 		File finalBackupDir = new File(backupsDir, time.atZone(ZoneId.systemDefault()).format(dateFormat));
@@ -175,7 +180,7 @@ public final class BackupHelper {
 	public static void deleteBackup(Backup backup) throws IOException {
 		File backupsDir = backup.dir.getParentFile();
 		
-		if (new File(backupsDir, "Last").getCanonicalFile().equals(backup.dir)) {
+		if (getLastBackup(backupsDir).equals(backup.dir)) {
 			List<Backup> backups = listAllBackups(backupsDir);
 			int index = backups.indexOf(backup);
 			
@@ -191,22 +196,30 @@ public final class BackupHelper {
 	}
 	
 	public static void setLastBackup(File backupsDir, File newLastBackup) throws IOException {
-		File lastBackup = new File(backupsDir, "Last");
+		File lastFile = new File(backupsDir, "Last");
 		
-		lastBackup.delete();
-		Files.createSymbolicLink(lastBackup.toPath(), newLastBackup.toPath().toAbsolutePath());
+		if (Files.isSymbolicLink(lastFile.toPath())) lastFile.delete();
+		FileUtils.write(lastFile, newLastBackup.getName(), StandardCharsets.UTF_8);
+	}
+	
+	public static File getLastBackup(File backupsDir) throws IOException {
+		File lastFile = new File(backupsDir, "Last");
+		
+		if (Files.isRegularFile(lastFile.toPath(), LinkOption.NOFOLLOW_LINKS))
+			return new File(backupsDir, FileUtils.readFileToString(lastFile, StandardCharsets.UTF_8));
+		
+		return lastFile.getCanonicalFile();
 	}
 	
 	public static List<Backup> listAllBackups(File backupsDir) {
 		if (!backupsDir.isDirectory()) return ImmutableList.of();
 		
 		List<Backup> list = new ArrayList<>();
-		File latestSymlink = new File(backupsDir, "Last");
 		
 		for (File file : backupsDir.listFiles()) {
 			File metadataFile = new File(file, "backupMetadata.dat");
 			
-			if (FileHelper.equals(file, latestSymlink) || !metadataFile.isFile()) continue;
+			if (file.getName().equals("Last") || !metadataFile.isFile()) continue;
 			
 			list.add(Backup.readBackup(file));
 		}

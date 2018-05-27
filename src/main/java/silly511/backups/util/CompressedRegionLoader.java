@@ -6,8 +6,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
@@ -102,7 +102,7 @@ public class CompressedRegionLoader {
 		private final IBlockState[][][] blockStates;
 		private final Map<BlockPos, NBTTagCompound> tileEntityData = new HashMap<>();
 		private final Map<BlockPos, TileTick> tileTicks = new HashMap<>();
-		private final List<NBTTagCompound> entities = new ArrayList<>();
+		private final List<NBTTagCompound> entities = new LinkedList<>();
 		
 		public ChunkData() {
 			isEmpty = true;

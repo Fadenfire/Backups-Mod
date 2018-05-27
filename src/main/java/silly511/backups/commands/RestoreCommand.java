@@ -88,10 +88,8 @@ public class RestoreCommand extends CommandBase {
 		World world = sender.getEntityWorld();
 		
 		StructureBoundingBox box = new StructureBoundingBox(parseBlockPos(sender, args, 0, false), parseBlockPos(sender, args, 3, false));
-		Backup backup = parseBackup(args, 6);
-		BlockPos minPos = new BlockPos(box.minX, box.minY, box.minZ);
-		BlockPos maxPos = new BlockPos(box.maxX, box.maxY, box.maxZ);
 		int size = box.getXSize() * box.getYSize() * box.getZSize();
+		Backup backup = parseBackup(args, 6);
 		
 		if (size > 524288) throw new CommandException("commands.clone.tooManyBlocks", size, 524288);
 		if (!world.isAreaLoaded(box)) throw new CommandException("commands.clone.outOfWorld");
@@ -101,7 +99,7 @@ public class RestoreCommand extends CommandBase {
 		
 		LinkedList<BlockPos> blocks = new LinkedList<>();
 		
-		for (BlockPos pos : BlockPos.getAllInBox(minPos, maxPos)) {
+		for (BlockPos pos : BlockPos.getAllInBox(new BlockPos(box.minX, box.minY, box.minZ), new BlockPos(box.maxX, box.maxY, box.maxZ))) {
 			if (loader.getBlockState(pos) == null) continue;
 			
 			IBlockState state = world.getBlockState(pos);
