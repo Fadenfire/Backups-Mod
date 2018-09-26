@@ -53,10 +53,10 @@ public class CompressedRegionLoader {
 		ChunkData chunkData = chunkCache.get(pos);
 		
 		if (chunkData == null) {
-			File regionFile = new File(regionDir, "r." + (pos.x >> 5) + "." + (pos.z >> 5) + ".mca");
+			File regionFile = new File(regionDir, "r." + (pos.x >> 5) + "." + (pos.z >> 5) + ".mca.gz");
 			
 			if (regionFile.exists())
-				try (DataInputStream stream = new DataInputStream(new InflaterInputStream(new FileInputStream(regionFile)))) {
+				try (DataInputStream stream = new DataInputStream(new GZIPInputStream(new FileInputStream(regionFile)))) {
 					chunkData = new ChunkData(getChunkNBT(stream, pos.x & 31, pos.z & 31));
 				} catch (IOException ex) {
 					BackupsMod.logger.error("Unable to read chunk " + pos.x + ", " + pos.z, ex);

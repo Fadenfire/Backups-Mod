@@ -3,7 +3,11 @@ package silly511.backups;
 import java.awt.image.BufferedImage;
 import java.io.File;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.management.PlayerList;
+import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.Style;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraft.util.text.TextComponentTranslation;
@@ -15,10 +19,13 @@ import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+import silly511.backups.Config.AnnounceBackupsMode;
 import silly511.backups.helpers.BackupHelper;
+import silly511.backups.helpers.BackupHelper.Backup;
 import silly511.backups.helpers.BackupHelper.BackupReason;
 import silly511.backups.helpers.FileHelper;
 import silly511.backups.helpers.ImageHelper;
@@ -32,13 +39,17 @@ public class BackupManager {
 	
 	public static void serverStarted() {
 		thread = null;
-		nextBackupTime = System.nanoTime() + (isTempWorld() ? Long.MAX_VALUE : 5_000_000_000L);
+		
+		if (isTempWorld())
+			nextBackupTime = System.nanoTime() + Long.MAX_VALUE;
+		else if (Config.backupInterval > 0)
+			startBackup(BackupReason.WORLD_JOIN, null);
 	}
 	
 	@SubscribeEvent
 	public static void serverTick(TickEvent.ServerTickEvent event) {
 		if (Config.backupInterval > 0 && thread == null && System.nanoTime() - nextBackupTime >= 0)
-			startBackup(BackupReason.SCHEDULED);
+			startBackup(BackupReason.SCHEDULED, null);
 		
 		if (thread != null && !thread.isAlive()) {
 			restoreSaving();
@@ -51,18 +62,32 @@ public class BackupManager {
 	
 	@SubscribeEvent
 	@SideOnly(Side.CLIENT)
+	public static void playerJoin(PlayerLoggedInEvent event) {
+		if (FMLCommonHandler.instance().getSide() == Side.CLIENT && Minecraft.getMinecraft().isSingleplayer()) {
+			if (thread != null)
+				postTagMessage("backups.started");
+			
+			if (isTempWorld())
+				event.player.sendStatusMessage(new TextComponentTranslation("backups.temp_world_warning").setStyle(new Style().setColor(TextFormatting.GOLD)), false);
+		}
+	}
+	
+	@SubscribeEvent
+	@SideOnly(Side.CLIENT)
 	public static void worldRenderLast(RenderWorldLastEvent event) {
-		if (thread != null && thread.icon == null)
+		if (thread != null && thread.needsIcon && thread.icon == null)
 			thread.icon = ImageHelper.createIcon(64);
 	}
 	
-	public static void startBackup(BackupReason reason) {
+	public static void startBackup(BackupReason reason, String label) {
 		if (thread != null) return;
 		
+		BackupsMod.logger.info("Starting backup");
 		postTagMessage("backups.started");
 		disableSaving();
 		
-		thread = new BackupThread(DimensionManager.getCurrentSaveRootDirectory(), getCurrentBackupsDir(), reason);
+		File saveDir = DimensionManager.getCurrentSaveRootDirectory();
+		thread = new BackupThread(saveDir, new File(Config.backupsDir, saveDir.getName()), reason, label);
 		thread.start();
 	}
 	
@@ -80,6 +105,7 @@ public class BackupManager {
 	
 	private static void disableSaving() {
 		MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
+		BackupsMod.logger.info("Disabling world saving");
 		
 		server.getPlayerList().saveAllPlayerData();
 		
@@ -104,6 +130,7 @@ public class BackupManager {
 	
 	private static void restoreSaving() {
 		MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
+		BackupsMod.logger.info("Restoring world saving");
 		
 		for (int i = 0; i < oldSaveStates.length; i++) {
 			WorldServer worldServer = server.worlds[i];
@@ -114,25 +141,36 @@ public class BackupManager {
 	}
 	
 	private static void postTagMessage(String msg) {
-		FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList().sendMessage(new TextComponentString("")
+		if (Config.announceBackups == AnnounceBackupsMode.OFF) return;
+		
+		PlayerList playerList = FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList();
+		ITextComponent component = new TextComponentString("")
 				.appendSibling(new TextComponentTranslation("backups.prefix").setStyle(new Style().setColor(TextFormatting.BLUE).setBold(true)))
 				.appendText(" ")
-				.appendSibling(new TextComponentTranslation(msg)));
+				.appendSibling(new TextComponentTranslation(msg));
+		
+		for (EntityPlayerMP player : playerList.getPlayers())
+			if (Config.announceBackups == AnnounceBackupsMode.ALL_PLAYERS || (Config.announceBackups == AnnounceBackupsMode.OPS_ONLY && playerList.canSendCommands(player.getGameProfile())))
+				player.sendMessage(component);
 	}
 	
 	public static class BackupThread extends Thread {
 		private File worldDir;
 		private File backupsDir;
 		private BackupReason reason;
+		private String label;
 		
+		@SideOnly(Side.CLIENT)
 		private volatile BufferedImage icon;
+		private volatile boolean needsIcon;
 		
 		private boolean errored;
 
-		public BackupThread(File worldDir, File backupsDir, BackupReason reason) {
+		public BackupThread(File worldDir, File backupsDir, BackupReason reason, String label) {
 			this.worldDir = worldDir;
 			this.backupsDir = backupsDir;
 			this.reason = reason;
+			this.label = label;
 			
 			this.setDaemon(true);
 			this.setName("Backup Thread");
@@ -141,19 +179,30 @@ public class BackupManager {
 		@Override
 		public void run() {
 			try {
-				if (FMLCommonHandler.instance().getSide() == Side.CLIENT)
-					while (icon == null)
-						try { sleep(20); } catch (InterruptedException ex) {}
+				boolean isClient = FMLCommonHandler.instance().getSide() == Side.CLIENT;
 				
 				if (Config.trimming.trimmingEnabled)
 					BackupHelper.trimBackups(backupsDir);
 				
-				BackupHelper.backup(worldDir, backupsDir, reason, icon);
+				Backup backup = BackupHelper.backup(worldDir, backupsDir, reason, isClient ? () -> fetchIcon() : null);
+				if (label != null) backup.setLabel(label);
+				
+				BackupsMod.logger.info("Finished backup");
 			} catch (Exception ex) {
 				errored = true;
 				
 				BackupsMod.logger.error("Backup failed", ex);
 			}
+		}
+		
+		@SideOnly(Side.CLIENT)
+		private BufferedImage fetchIcon() {
+			needsIcon = true;
+			
+			for (int i = 0; i < 50 && icon == null; i++)
+				try { sleep(20); } catch (InterruptedException ex) {}
+			
+			return icon;
 		}
 		
 	}

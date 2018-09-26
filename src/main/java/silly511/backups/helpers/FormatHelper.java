@@ -6,12 +6,14 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedList;
+import java.util.List;
 
 import net.minecraft.client.resources.I18n;
 
 public final class FormatHelper {
 	
-	public static final DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("d/M/yyyy h:mm:ss a");
+	public static final DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("M/d/yyyy h:mm:ss a");
 	public static final DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("h:mm:ss a");
 	
 	public static final DecimalFormat singleDecimal = new DecimalFormat("#.#");
@@ -61,6 +63,29 @@ public final class FormatHelper {
 			return I18n.format("backups.misc.minutesAgo", secondsAgo / 60);
 		else
 			return relativeDateFormat(time.toLocalDate()) + " " + time.format(timeFormat);
+	}
+	
+	public static String relativeTimeAgo(Instant time) {
+		long sec = Instant.now().getEpochSecond() - time.getEpochSecond();
+		List<String> list = new LinkedList<>();
+		long t = 0;
+		
+		if ((t = sec / 31536000) != 0)
+			list.add(t + " " + I18n.format("backups.misc.timeunit.year" + (t > 1 ? "s" : "")));
+		if ((t = (sec % 31536000) / 86400) != 0)
+			list.add(t + " " + I18n.format("backups.misc.timeunit.day" + (t > 1 ? "s" : "")));
+		if ((t = (sec % 86400) / 3600) != 0)
+			list.add(t + " " + I18n.format("backups.misc.timeunit.hour" + (t > 1 ? "s" : "")));
+		if ((t = (sec % 3600) / 60) != 0)
+			list.add(t + " " + I18n.format("backups.misc.timeunit.minute" + (t > 1 ? "s" : "")));
+		if ((t = sec % 60) != 0)
+			list.add(t + " " + I18n.format("backups.misc.timeunit.second" + (t > 1 ? "s" : "")));
+		
+		return String.join(", ", list);
+	}
+	
+	public static String removeEnd(String str, String remove) {
+		return str.endsWith(remove) ? str.substring(0, str.length() - remove.length()) : str;
 	}
 
 }

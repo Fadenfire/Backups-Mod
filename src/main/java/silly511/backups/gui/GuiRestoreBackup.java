@@ -119,16 +119,20 @@ public class GuiRestoreBackup extends GuiScreen {
 		} else if (button.id == 3) {
 			File tempWorldDir = new File("tempWorlds", String.valueOf(new Random().nextInt()));
 			
-			//Restore backup to temp dir, but without region files
-			BackupHelper.restoreBackup(backup.dir, tempWorldDir, f -> f.getName().endsWith(".mca"));
-			
-			//Add custom region file cache that will load region files from the backup
-			synchronized (RegionFileCache.class) {
-				RegionFileCache.clearRegionFileReferences();
-				RegionFileCache.REGIONS_BY_FILE = new LoadFromBackupMap(backup.dir, tempWorldDir);
-			}
-			
-			mc.launchIntegratedServer(".." + File.separator + tempWorldDir, worldName, null);
+			mc.displayGuiScreen(new GuiTask(status -> {
+				status.accept("gui.backups.loadingBackup");
+				
+				//Restore backup to temp dir, but without region files
+				BackupHelper.restoreBackup(backup.dir, tempWorldDir, f -> f.endsWith(".mca"));
+			}, () -> {
+				//Add custom region file cache that will load region files from the backup
+				synchronized (RegionFileCache.class) {
+					RegionFileCache.clearRegionFileReferences();
+					RegionFileCache.REGIONS_BY_FILE = new LoadFromBackupMap(backup.dir, tempWorldDir);
+				}
+				
+				mc.launchIntegratedServer(".." + File.separator + tempWorldDir, worldName, null);
+			}));
 		} else if (button.id == 4) {
 			String message = I18n.format("gui.backups.confirmDelete", list.selected.size());
 			
@@ -148,11 +152,16 @@ public class GuiRestoreBackup extends GuiScreen {
 			if (!result) {
 				mc.displayGuiScreen(this);
 			} else if (id == 0) {
-				BackupHelper.backup(worldDir, backupsDir, BackupReason.RESTORE, null);
-				BackupHelper.restoreBackup(backup.dir, worldDir, null);
-				BackupHelper.setLastBackup(backupsDir, backup.dir);
-				
-				mc.displayGuiScreen(parentScreen);
+				mc.displayGuiScreen(new GuiTask(parentScreen, status -> {
+					if (worldDir.isDirectory()) {
+						status.accept("gui.backups.makingBackup");
+						BackupHelper.backup(worldDir, backupsDir, BackupReason.RESTORE, null);
+					}
+					
+					status.accept("gui.backups.restoring");
+					BackupHelper.restoreBackup(backup.dir, worldDir, null);
+					BackupHelper.setLastBackup(backupsDir, backup.dir);
+				}));
 			} else if (id == 4) {
 				for (BackupsList.BackupsListEntry entry : list.selected)
 					BackupHelper.deleteBackup(entry.backup);

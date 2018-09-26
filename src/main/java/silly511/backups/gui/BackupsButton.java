@@ -4,6 +4,7 @@ import org.lwjgl.input.Keyboard;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiListWorldSelectionEntry;
 import net.minecraft.client.gui.GuiWorldSelection;
 import net.minecraft.client.resources.I18n;
 
@@ -23,7 +24,10 @@ public class BackupsButton extends GuiButton {
 	@Override
 	public void drawButton(Minecraft mc, int mouseX, int mouseY, float partialTicks) {
 		boolean optionKeyDown = Keyboard.isKeyDown(Keyboard.KEY_LMENU) || Keyboard.isKeyDown(Keyboard.KEY_RMENU);
+		GuiListWorldSelectionEntry selected = parentScreen.selectionList.getSelectedWorld();
+		
 		this.displayString = optionKeyDown ? recreateText : backupsText;
+		this.enabled = selected == null ? false : optionKeyDown ? !(selected instanceof BackupsOnlyWorldEntry) : true;
 		
 		super.drawButton(mc, mouseX, mouseY, partialTicks);
 	}
@@ -38,5 +42,7 @@ public class BackupsButton extends GuiButton {
 		
 		return false;
 	}
+	
+	
 
 }

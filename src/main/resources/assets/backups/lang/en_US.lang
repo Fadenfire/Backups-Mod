@@ -2,11 +2,13 @@ backups.started=Started backup
 backups.finished=Finished backup
 backups.failed=Backup failed! Check log for more details
 backups.prefix=[Backups]:
+backups.temp_world_warning=Since you are inside a backup, no changes will be saved
 
 backups.reason.unknown=Unknown
 backups.reason.scheduled=Automatic
 backups.reason.user=User Initiated
 backups.reason.restore=Restore
+backups.reason.world_join=World Start
 
 gui.backups.title=Backups
 gui.backups.calculating=Calculating
@@ -18,19 +20,41 @@ gui.backups.delete=Delete
 gui.backups.confirmDelete=Are you sure you want to delete %s backup(s)?
 gui.backups.confirmRestore1=Are you sure you want to restore %s to %s?
 gui.backups.confirmRestore2=A backup of the world will be made of before it is restored.
+gui.backups.makingBackup=Making Backup
+gui.backups.restoring=Restoring
+gui.backups.loadingBackup=Loading Backup
 
-commands.backups.backup.usage=/backup
+commands.backups.lastbackup.usage=/lastbackup
+commands.backups.lastbackup.noBackups=No Backups
+commands.backups.lastbackup.success=Last Backup: %s (%s ago)
+
+commands.backups.backup.usage=/backup [label ...]
 commands.backups.backup.inProgress=Backup already in progress
 commands.backups.backup.tempWorld=Can't backup when inside a backup
 commands.backups.backup.success=Started backup
 
-commands.backups.restore.usage=/restore <x1> <y1> <z1> <x2> <y2> <z2> <backup>
+commands.backups.restore.usage=/restore <blocks|player> ...
 commands.backups.restore.invalidDate='%s' is not a valid date
 commands.backups.restore.notABackup=Backup doesn't exist
-commands.backups.restore.success=Restored %s blocks from %s
+commands.backups.restore.error=An error occurred, the backup may be corrupted
+commands.backups.restore.area.usage=/restore blocks <x1> <y1> <z1> <x2> <y2> <z2> <backup>
+commands.backups.restore.area.success=Restored %s blocks from %s
+commands.backups.restore.player.usage=/restore player <player> <backup>
+commands.backups.restore.player.success=Restored the inventory of %s to %s
 
 backups.misc.today=Today
 backups.misc.yesterday=Yesterday
+
+backups.misc.timeunit.year=year
+backups.misc.timeunit.years=years
+backups.misc.timeunit.day=day
+backups.misc.timeunit.days=days
+backups.misc.timeunit.hour=hour
+backups.misc.timeunit.hours=hours
+backups.misc.timeunit.minute=minute
+backups.misc.timeunit.minutes=minutes
+backups.misc.timeunit.second=second
+backups.misc.timeunit.seconds=seconds
 
 backups.misc.weekday.monday=Monday
 backups.misc.weekday.tuesday=Tuesday

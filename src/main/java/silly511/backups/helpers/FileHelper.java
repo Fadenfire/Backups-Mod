@@ -1,19 +1,21 @@
 package silly511.backups.helpers;
 
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.zip.Deflater;
 
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.SystemUtils;
 
 public final class FileHelper {
 	
@@ -58,24 +60,16 @@ public final class FileHelper {
 		return newParent.toPath().resolve(fileParent.toPath().relativize(file.toPath()));
 	}
 	
-	public static boolean equals(File f1, File f2) {
-		return FilenameUtils.normalize(f1.getAbsolutePath()).equals(FilenameUtils.normalize(f2.getAbsolutePath()));
+	public static Path relativizeAdd(File fileParent, File file, File newParent, String extension) {
+		return newParent.toPath().resolve(fileParent.toPath().relativize(file.toPath()) + extension);
 	}
 	
-	public static void copyAttributes(Path source, Path target) throws IOException {
-		BasicFileAttributes attribs = Files.readAttributes(source, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-		Files.getFileAttributeView(target, BasicFileAttributeView.class, LinkOption.NOFOLLOW_LINKS).setTimes(
-				attribs.lastModifiedTime(),
-				attribs.lastAccessTime(),
-				attribs.creationTime());
-		
-		//See https://bugs.openjdk.java.net/browse/JDK-8151430
-		if (SystemUtils.IS_OS_MAC_OSX) {
-			String fetchTimeCommand = "GetFileInfo -P -d \"" + source.toAbsolutePath() + "\"";
-			String setTimeCommand = "SetFile -P -d \"$(" + fetchTimeCommand + ")\" \"" + target.toAbsolutePath() + "\"";
-			
-			new ProcessBuilder("/bin/bash", "-c", setTimeCommand).start();
-		}
+	public static Path relativizeRemove(File fileParent, File file, File newParent, String extension) {
+		return newParent.toPath().resolve(FormatHelper.removeEnd(fileParent.toPath().relativize(file.toPath()).toString(), extension));
+	}
+	
+	public static boolean equals(File f1, File f2) {
+		return FilenameUtils.normalize(f1.getAbsolutePath()).equals(FilenameUtils.normalize(f2.getAbsolutePath()));
 	}
 	
 	public static Instant getDateCreated(File file) {
@@ -88,14 +82,22 @@ public final class FileHelper {
 		}
 	}
 	
-	public static boolean hasSameModifyTime(Path file1, Path file2) throws IOException {
-		if (!Files.exists(file1, LinkOption.NOFOLLOW_LINKS)) return false;
-		if (!Files.exists(file2, LinkOption.NOFOLLOW_LINKS)) return false;
-		
-		FileTime time1 = Files.getLastModifiedTime(file1, LinkOption.NOFOLLOW_LINKS);
-		FileTime time2 = Files.getLastModifiedTime(file2, LinkOption.NOFOLLOW_LINKS);
-		
-		return time1.equals(time2);
+	public static FileTime readGzipTime(Path file) throws IOException {
+		try (DataInputStream in = new DataInputStream(new BufferedInputStream(Files.newInputStream(file), 64))) {
+			if (in.read() != 0x1F || in.read() != 0x8B) throw new IOException("Corrupted GZIP file");
+			if (in.readUnsignedByte() != Deflater.DEFLATED) throw new IOException("Unsupported compression method");
+			in.skip(1);
+			
+			int time = in.readUnsignedByte()
+		            | (in.readUnsignedByte() << 8)
+		            | (in.readUnsignedByte() << 16)
+		            | (in.readUnsignedByte() << 24);
+			
+			return FileTime.from(time, TimeUnit.SECONDS);
+		} catch (IOException ex) {
+			System.out.println(file);
+			throw ex;
+		}
 	}
 
 }
