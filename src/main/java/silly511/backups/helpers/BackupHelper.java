@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.zip.Deflater;
 import java.util.zip.InflaterInputStream;
 import java.util.zip.ZipException;
@@ -40,6 +42,8 @@ import com.google.common.collect.ImmutableList;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.common.ForgeVersion;
+import net.minecraftforge.fml.common.ProgressManager;
+import net.minecraftforge.fml.common.ProgressManager.ProgressBar;
 import silly511.backups.BackupsMod;
 import silly511.backups.Config;
 import silly511.backups.util.IORunnable;
@@ -191,55 +195,60 @@ public final class BackupHelper {
 	}
 	
 	public static void updateBackups(File allBackupsDir) {
-		if (!allBackupsDir.isDirectory()) return;
-		
 		try {
 			Path tempFile = Files.createTempFile(null, null);
 			
 			try {
 				BackupsMod.logger.info("Converting backups to new format");
 				
-				for (File backupsDir : allBackupsDir.listFiles())
-					if (backupsDir.isDirectory())
-						for (File backupDir : backupsDir.listFiles()) {
-							File metadataFile = new File(backupDir, "backupMetadata.dat");
+				List<File> backupsDirs = Arrays.stream(allBackupsDir.listFiles()).filter(File::isDirectory).collect(Collectors.toList());
+				ProgressBar bar = ProgressManager.push("Converting Backups", backupsDirs.size());
+				
+				for (File backupsDir : backupsDirs) {
+					bar.step(backupsDir.getName());
+					
+					for (File backupDir : backupsDir.listFiles()) {
+						File metadataFile = new File(backupDir, "backupMetadata.dat");
+						
+						if (!metadataFile.isFile()) continue;
+						BackupsMod.logger.info("Converting backup: " + backupsDir.getName() + "/" + backupDir.getName());
+						
+						for (File file : FileHelper.listFiles(backupDir, true)) {
+							Path path = file.toPath();
+							file.setWritable(true);
 							
-							if (!metadataFile.isFile()) continue;
-							BackupsMod.logger.info("Converting backup: " + backupsDir.getName() + "/" + backupDir.getName());
+							if (!file.isFile() || file.equals(metadataFile) || Files.isSymbolicLink(path)) continue;
 							
-							for (File file : FileHelper.listFiles(backupDir, true)) {
-								Path path = file.toPath();
-								file.setWritable(true);
-								
-								if (!file.isFile() || file.equals(metadataFile) || Files.isSymbolicLink(path)) continue;
-								
-								//Check if file is already in new format
-								try (InputStream in = new BufferedInputStream(new FileInputStream(file), 3)) {
-									if (in.read() == 0x1F && in.read() == 0x8B && in.read() == Deflater.DEFLATED) {
-										if (!file.toString().endsWith(".gz"))
-											Files.move(path, path.resolveSibling(path.getFileName() + ".gz"));
-										
-										continue;
-									}
+							//Check if file is already in new format
+							try (InputStream in = new BufferedInputStream(new FileInputStream(file), 3)) {
+								if (in.read() == 0x1F && in.read() == 0x8B && in.read() == Deflater.DEFLATED) {
+									if (!file.toString().endsWith(".gz"))
+										Files.move(path, path.resolveSibling(path.getFileName() + ".gz"));
+									
+									continue;
 								}
-								
-								try (InputStream in = new InflaterInputStream(new FileInputStream(file))) {
-									Files.copy(in, tempFile, StandardCopyOption.REPLACE_EXISTING);
-								} catch (ZipException ex) {
-									continue; //Ignore files that aren't compressed
-								}
-								
-								GzipParameters parameters = new GzipParameters();
-								parameters.setModificationTime(Files.getLastModifiedTime(path, LinkOption.NOFOLLOW_LINKS).toMillis());
-								parameters.setCompressionLevel(Deflater.BEST_COMPRESSION);
-								
-								try (OutputStream out = new GzipCompressorOutputStream(new FileOutputStream(file), parameters)) {
-									Files.copy(tempFile, out);
-								}
-								
-								Files.move(path, path.resolveSibling(path.getFileName() + ".gz"));
 							}
+							
+							try (InputStream in = new InflaterInputStream(new FileInputStream(file))) {
+								Files.copy(in, tempFile, StandardCopyOption.REPLACE_EXISTING);
+							} catch (ZipException ex) {
+								continue; //Ignore files that aren't compressed
+							}
+							
+							GzipParameters parameters = new GzipParameters();
+							parameters.setModificationTime(Files.getLastModifiedTime(path, LinkOption.NOFOLLOW_LINKS).toMillis());
+							parameters.setCompressionLevel(Deflater.BEST_COMPRESSION);
+							
+							try (OutputStream out = new GzipCompressorOutputStream(new FileOutputStream(file), parameters)) {
+								Files.copy(tempFile, out);
+							}
+							
+							Files.move(path, path.resolveSibling(path.getFileName() + ".gz"));
 						}
+					}
+				}
+				
+				ProgressManager.pop(bar);
 			} finally {
 				Files.delete(tempFile);
 			}
