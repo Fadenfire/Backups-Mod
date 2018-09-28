@@ -4,7 +4,6 @@ import java.text.DecimalFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
@@ -54,32 +53,21 @@ public final class FormatHelper {
 			return date.getDayOfMonth() + ", " + I18n.format("backups.misc.month." + date.getMonth().toString().toLowerCase()) + ", " + date.getYear();
 	}
 	
-	public static String relativeDateTimeFormat(ZonedDateTime time) {
-		long secondsAgo = Instant.now().getEpochSecond() - time.toEpochSecond();
-		
-		if (secondsAgo < 60)
-			return I18n.format("backups.misc.secondsAgo", secondsAgo);
-		else if (secondsAgo < 60 * 60)
-			return I18n.format("backups.misc.minutesAgo", secondsAgo / 60);
-		else
-			return relativeDateFormat(time.toLocalDate()) + " " + time.format(timeFormat);
-	}
-	
 	public static String relativeTimeAgo(Instant time) {
 		long sec = Instant.now().getEpochSecond() - time.getEpochSecond();
 		List<String> list = new LinkedList<>();
 		long t = 0;
 		
 		if ((t = sec / 31536000) != 0)
-			list.add(t + " " + I18n.format("backups.misc.timeunit.year" + (t > 1 ? "s" : "")));
+			list.add(t + " year" + (t == 1 ? "" : "s"));
 		if ((t = (sec % 31536000) / 86400) != 0)
-			list.add(t + " " + I18n.format("backups.misc.timeunit.day" + (t > 1 ? "s" : "")));
+			list.add(t + " day" + (t == 1 ? "" : "s"));
 		if ((t = (sec % 86400) / 3600) != 0)
-			list.add(t + " " + I18n.format("backups.misc.timeunit.hour" + (t > 1 ? "s" : "")));
+			list.add(t + " hour" + (t == 1 ? "" : "s"));
 		if ((t = (sec % 3600) / 60) != 0)
-			list.add(t + " " + I18n.format("backups.misc.timeunit.minute" + (t > 1 ? "s" : "")));
+			list.add(t + " minute" + (t == 1 ? "" : "s"));
 		if ((t = sec % 60) != 0)
-			list.add(t + " " + I18n.format("backups.misc.timeunit.second" + (t > 1 ? "s" : "")));
+			list.add(t + " second" + (t == 1 ? "" : "s"));
 		
 		return String.join(", ", list);
 	}

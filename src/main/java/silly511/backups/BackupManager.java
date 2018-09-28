@@ -21,6 +21,7 @@ import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+import net.minecraftforge.fml.common.network.handshake.NetworkDispatcher;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import silly511.backups.Config.AnnounceBackupsMode;
@@ -53,7 +54,11 @@ public class BackupManager {
 		
 		if (thread != null && !thread.isAlive()) {
 			restoreSaving();
-			postTagMessage(thread.errored ? "backups.failed" : "backups.finished");
+			
+			if (thread.errored)
+				postTagMessage("backups.failed", "Backup failed");
+			else
+				postTagMessage("backups.finished", "Finished backup");
 			
 			nextBackupTime = System.nanoTime() + Config.backupInterval * 60_000_000_000L;
 			thread = null;
@@ -65,7 +70,7 @@ public class BackupManager {
 	public static void playerJoin(PlayerLoggedInEvent event) {
 		if (FMLCommonHandler.instance().getSide() == Side.CLIENT && Minecraft.getMinecraft().isSingleplayer()) {
 			if (thread != null)
-				postTagMessage("backups.started");
+				postTagMessage("backups.started", "Started backup");
 			
 			if (isTempWorld())
 				event.player.sendStatusMessage(new TextComponentTranslation("backups.temp_world_warning").setStyle(new Style().setColor(TextFormatting.GOLD)), false);
@@ -83,7 +88,7 @@ public class BackupManager {
 		if (thread != null) return;
 		
 		BackupsMod.logger.info("Starting backup");
-		postTagMessage("backups.started");
+		postTagMessage("backups.started", "Started backup");
 		disableSaving();
 		
 		File saveDir = DimensionManager.getCurrentSaveRootDirectory();
@@ -140,18 +145,26 @@ public class BackupManager {
 		}
 	}
 	
-	private static void postTagMessage(String msg) {
+	private static void postTagMessage(String transKey, String raw) {
 		if (Config.announceBackups == AnnounceBackupsMode.OFF) return;
 		
 		PlayerList playerList = FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList();
-		ITextComponent component = new TextComponentString("")
-				.appendSibling(new TextComponentTranslation("backups.prefix").setStyle(new Style().setColor(TextFormatting.BLUE).setBold(true)))
+		Style prefixStyle = new Style().setColor(TextFormatting.BLUE).setBold(true);
+		
+		ITextComponent localizedText = new TextComponentString("")
+				.appendSibling(new TextComponentTranslation("backups.prefix").setStyle(prefixStyle))
 				.appendText(" ")
-				.appendSibling(new TextComponentTranslation(msg));
+				.appendSibling(new TextComponentTranslation(transKey));
+		
+		ITextComponent rawText = new TextComponentString("")
+				.appendSibling(new TextComponentString("[Backups]: ").setStyle(prefixStyle))
+				.appendSibling(new TextComponentString(raw));
 		
 		for (EntityPlayerMP player : playerList.getPlayers())
-			if (Config.announceBackups == AnnounceBackupsMode.ALL_PLAYERS || (Config.announceBackups == AnnounceBackupsMode.OPS_ONLY && playerList.canSendCommands(player.getGameProfile())))
-				player.sendMessage(component);
+			if (Config.announceBackups == AnnounceBackupsMode.ALL_PLAYERS || (Config.announceBackups == AnnounceBackupsMode.OPS_ONLY && playerList.canSendCommands(player.getGameProfile()))) {
+				boolean hasMod = NetworkDispatcher.get(player.connection.getNetworkManager()).getModList().containsKey(BackupsMod.modid);
+				player.sendMessage(hasMod ? localizedText : rawText);
+			}
 	}
 	
 	public static class BackupThread extends Thread {

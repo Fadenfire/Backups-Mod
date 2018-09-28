@@ -24,18 +24,18 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.chunk.NibbleArray;
 import silly511.backups.BackupsMod;
 
-public class CompressedRegionLoader {
+public class GzippedRegionLoader {
 	
 	private final Map<ChunkPos, ChunkData> chunkCache = new HashMap<>();
 	private File regionDir;
 	
-	public CompressedRegionLoader(File dimDir) {
+	public GzippedRegionLoader(File dimDir) {
 		this.regionDir = new File(dimDir, "region");
 	}
 	
 	public IBlockState getBlockState(BlockPos pos) {
 		ChunkData chunk = getChunk(new ChunkPos(pos));
-		if (chunk.isEmpty) return null;
+		if (chunk.isEmpty) return Blocks.AIR.getDefaultState();
 		
 		IBlockState state = chunk.blockStates[pos.getX() & 15][pos.getY()][pos.getZ() & 15];
 		return state == null ? Blocks.AIR.getDefaultState() : state;
@@ -56,7 +56,7 @@ public class CompressedRegionLoader {
 			File regionFile = new File(regionDir, "r." + (pos.x >> 5) + "." + (pos.z >> 5) + ".mca.gz");
 			
 			if (regionFile.exists())
-				try (DataInputStream stream = new DataInputStream(new GZIPInputStream(new FileInputStream(regionFile)))) {
+				try (DataInputStream stream = new DataInputStream(new GzipInputStream(new FileInputStream(regionFile)))) {
 					chunkData = new ChunkData(getChunkNBT(stream, pos.x & 31, pos.z & 31));
 				} catch (IOException ex) {
 					BackupsMod.logger.error("Unable to read chunk " + pos.x + ", " + pos.z, ex);

@@ -88,12 +88,7 @@ public final class FileHelper {
 			if (in.readUnsignedByte() != Deflater.DEFLATED) throw new IOException("Unsupported compression method");
 			in.skip(1);
 			
-			int time = in.readUnsignedByte()
-		            | (in.readUnsignedByte() << 8)
-		            | (in.readUnsignedByte() << 16)
-		            | (in.readUnsignedByte() << 24);
-			
-			return FileTime.from(time, TimeUnit.SECONDS);
+			return FileTime.from(Integer.reverseBytes(in.readInt()), TimeUnit.SECONDS);
 		} catch (IOException ex) {
 			System.out.println(file);
 			throw ex;

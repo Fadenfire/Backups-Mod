@@ -45,17 +45,6 @@ commands.backups.restore.player.success=Restored the inventory of %s to %s
 backups.misc.today=Today
 backups.misc.yesterday=Yesterday
 
-backups.misc.timeunit.year=year
-backups.misc.timeunit.years=years
-backups.misc.timeunit.day=day
-backups.misc.timeunit.days=days
-backups.misc.timeunit.hour=hour
-backups.misc.timeunit.hours=hours
-backups.misc.timeunit.minute=minute
-backups.misc.timeunit.minutes=minutes
-backups.misc.timeunit.second=second
-backups.misc.timeunit.seconds=seconds
-
 backups.misc.weekday.monday=Monday
 backups.misc.weekday.tuesday=Tuesday
 backups.misc.weekday.wednesday=Wednesday

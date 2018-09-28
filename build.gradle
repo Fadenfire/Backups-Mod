@@ -10,7 +10,7 @@ buildscript {
 
 apply plugin: 'net.minecraftforge.gradle.forge'
 
-version = "1.12.2-1.4.1"
+version = "1.12.2-1.4.2"
 group = "silly511.backups"
 archivesBaseName = "Backups"
 libsDirName = "../releases"
@@ -25,6 +25,7 @@ minecraft {
     version = "1.12.2-14.23.1.2582"
     runDir = "run"
     mappings = "snapshot_20171230"
+    makeObfSourceJar = false
 }
 
 jar {

@@ -12,7 +12,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.zip.GZIPInputStream;
 
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.command.CommandBase;
@@ -36,8 +35,9 @@ import silly511.backups.BackupsMod;
 import silly511.backups.helpers.BackupHelper;
 import silly511.backups.helpers.BackupHelper.Backup;
 import silly511.backups.helpers.FormatHelper;
-import silly511.backups.util.CompressedRegionLoader;
-import silly511.backups.util.CompressedRegionLoader.TileTick;
+import silly511.backups.util.GzipInputStream;
+import silly511.backups.util.GzippedRegionLoader;
+import silly511.backups.util.GzippedRegionLoader.TileTick;
 
 public class RestoreCommand extends CommandBase {
 	
@@ -115,13 +115,11 @@ public class RestoreCommand extends CommandBase {
 		if (!world.isAreaLoaded(box)) throw new CommandException("commands.clone.outOfWorld");
 		
 		String dimDir = sender.getEntityWorld().provider.getSaveFolder();
-		CompressedRegionLoader loader = new CompressedRegionLoader(dimDir == null ? backup.dir : new File(backup.dir, dimDir));
+		GzippedRegionLoader loader = new GzippedRegionLoader(dimDir == null ? backup.dir : new File(backup.dir, dimDir));
 		
 		LinkedList<BlockPos> blocks = new LinkedList<>();
 		
 		for (BlockPos pos : BlockPos.getAllInBox(new BlockPos(box.minX, box.minY, box.minZ), new BlockPos(box.maxX, box.maxY, box.maxZ))) {
-			if (loader.getBlockState(pos) == null) continue;
-			
 			IBlockState state = world.getBlockState(pos);
 			
 			if (!state.isFullBlock() && !state.isFullCube())
@@ -175,7 +173,7 @@ public class RestoreCommand extends CommandBase {
 		NBTTagCompound tag = null;
 		
 		if (playerFile.exists())
-			try (InputStream in = new GZIPInputStream(new FileInputStream(playerFile))) {
+			try (InputStream in = new GzipInputStream(new FileInputStream(playerFile))) {
 				tag = CompressedStreamTools.readCompressed(in);
 			} catch (IOException ex) {
 				BackupsMod.logger.error("Unable to restore player", ex);

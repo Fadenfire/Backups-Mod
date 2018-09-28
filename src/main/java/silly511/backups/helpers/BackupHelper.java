@@ -13,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -32,9 +31,6 @@ import java.util.zip.Deflater;
 import java.util.zip.InflaterInputStream;
 import java.util.zip.ZipException;
 
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
-import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
-import org.apache.commons.compress.compressors.gzip.GzipParameters;
 import org.apache.commons.io.FileUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -46,6 +42,8 @@ import net.minecraftforge.fml.common.ProgressManager;
 import net.minecraftforge.fml.common.ProgressManager.ProgressBar;
 import silly511.backups.BackupsMod;
 import silly511.backups.Config;
+import silly511.backups.util.GzipInputStream;
+import silly511.backups.util.GzipOutputStream;
 import silly511.backups.util.IORunnable;
 
 public final class BackupHelper {
@@ -67,7 +65,7 @@ public final class BackupHelper {
 		File lastBackup = getLastBackup(backupsDir);
 		Instant time = Instant.now();
 		
-		FileUtils.forceMkdir(currentBackup);
+		Files.createDirectories(currentBackup.toPath());
 		FileHelper.cleanDirectory(currentBackup);
 				
 		for (File file : FileHelper.listFiles(sourceDir, false)) {
@@ -82,15 +80,10 @@ public final class BackupHelper {
 				
 				if (Files.isRegularFile(lastFile, LinkOption.NOFOLLOW_LINKS) && Files.getLastModifiedTime(sourceFile).equals(FileHelper.readGzipTime(lastFile)))
 					Files.createLink(currentFile, lastFile);
-				else {
-					GzipParameters parameters = new GzipParameters();
-					parameters.setModificationTime(Files.getLastModifiedTime(sourceFile, LinkOption.NOFOLLOW_LINKS).toMillis());
-					parameters.setCompressionLevel(Deflater.BEST_COMPRESSION);
-					
-					try (OutputStream out = new GzipCompressorOutputStream(Files.newOutputStream(currentFile), parameters)) {
+				else
+					try (OutputStream out = new GzipOutputStream(Files.newOutputStream(currentFile), Files.getLastModifiedTime(sourceFile, LinkOption.NOFOLLOW_LINKS), 8192)) {
 						Files.copy(sourceFile, out);
 					}
-				}
 			}
 		}
 		
@@ -107,7 +100,7 @@ public final class BackupHelper {
 	}
 	
 	public static void restoreBackup(File backupDir, File targetDir, Predicate<String> filter) throws IOException {
-		FileUtils.forceMkdir(targetDir);
+		Files.createDirectories(targetDir.toPath());
 		FileHelper.cleanDirectory(targetDir);
 		
 		List<IORunnable> attributeCopyTasks = new LinkedList<>();
@@ -121,11 +114,10 @@ public final class BackupHelper {
 			else if (Files.isRegularFile(backupFile, LinkOption.NOFOLLOW_LINKS) && file.getPath().endsWith(".gz")) {
 				if (filter != null && filter.test(targetFile.getFileName().toString())) continue;
 				
-				try (GzipCompressorInputStream stream = new GzipCompressorInputStream(Files.newInputStream(backupFile))) {
+				try (GzipInputStream stream = new GzipInputStream(Files.newInputStream(backupFile), 8192)) {
 					Files.copy(stream, targetFile, StandardCopyOption.REPLACE_EXISTING);
 					
-					long time = stream.getMetaData().getModificationTime();
-					attributeCopyTasks.add(() -> Files.setLastModifiedTime(targetFile, FileTime.fromMillis(time)));
+					attributeCopyTasks.add(() -> Files.setLastModifiedTime(targetFile, stream.getModTime()));
 				}
 			}
 		}
@@ -235,11 +227,7 @@ public final class BackupHelper {
 								continue; //Ignore files that aren't compressed
 							}
 							
-							GzipParameters parameters = new GzipParameters();
-							parameters.setModificationTime(Files.getLastModifiedTime(path, LinkOption.NOFOLLOW_LINKS).toMillis());
-							parameters.setCompressionLevel(Deflater.BEST_COMPRESSION);
-							
-							try (OutputStream out = new GzipCompressorOutputStream(new FileOutputStream(file), parameters)) {
+							try (OutputStream out = new GzipOutputStream(new FileOutputStream(file), Files.getLastModifiedTime(path, LinkOption.NOFOLLOW_LINKS))) {
 								Files.copy(tempFile, out);
 							}
 							
