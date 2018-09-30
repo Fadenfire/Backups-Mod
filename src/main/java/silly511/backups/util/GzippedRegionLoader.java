@@ -6,8 +6,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
@@ -23,18 +23,18 @@ import net.minecraft.util.BlockPos;
 import net.minecraft.world.chunk.NibbleArray;
 import silly511.backups.BackupsMod;
 
-public class CompressedRegionLoader {
+public class GzippedRegionLoader {
 	
 	private final Map<ChunkPos, ChunkData> chunkCache = new HashMap<>();
 	private File regionDir;
 	
-	public CompressedRegionLoader(File dimDir) {
+	public GzippedRegionLoader(File dimDir) {
 		this.regionDir = new File(dimDir, "region");
 	}
 	
 	public IBlockState getBlockState(BlockPos pos) {
 		ChunkData chunk = getChunk(new ChunkPos(pos));
-		if (chunk.isEmpty) return null;
+		if (chunk.isEmpty) return Blocks.air.getDefaultState();
 		
 		IBlockState state = chunk.blockStates[pos.getX() & 15][pos.getY()][pos.getZ() & 15];
 		return state == null ? Blocks.air.getDefaultState() : state;
@@ -52,10 +52,10 @@ public class CompressedRegionLoader {
 		ChunkData chunkData = chunkCache.get(pos);
 		
 		if (chunkData == null) {
-			File regionFile = new File(regionDir, "r." + (pos.chunkXPos >> 5) + "." + (pos.chunkZPos >> 5) + ".mca");
+			File regionFile = new File(regionDir, "r." + (pos.chunkXPos >> 5) + "." + (pos.chunkZPos >> 5) + ".mca.gz");
 			
 			if (regionFile.exists())
-				try (DataInputStream stream = new DataInputStream(new InflaterInputStream(new FileInputStream(regionFile)))) {
+				try (DataInputStream stream = new DataInputStream(new GzipInputStream(new FileInputStream(regionFile)))) {
 					chunkData = new ChunkData(getChunkNBT(stream, pos.chunkXPos & 31, pos.chunkZPos & 31));
 				} catch (IOException ex) {
 					BackupsMod.logger.error("Unable to read chunk " + pos.chunkXPos + ", " + pos.chunkZPos, ex);
@@ -102,7 +102,7 @@ public class CompressedRegionLoader {
 		private final IBlockState[][][] blockStates;
 		private final Map<BlockPos, NBTTagCompound> tileEntityData = new HashMap<>();
 		private final Map<BlockPos, TileTick> tileTicks = new HashMap<>();
-		private final List<NBTTagCompound> entities = new LinkedList<>();
+		private final List<NBTTagCompound> entities = new ArrayList<>();
 		
 		public ChunkData() {
 			isEmpty = true;

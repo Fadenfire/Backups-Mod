@@ -4,6 +4,7 @@ import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
 import silly511.backups.BackupManager;
+import silly511.backups.Config;
 import silly511.backups.helpers.BackupHelper.BackupReason;
 
 public class BackupCommand extends CommandBase {
@@ -20,7 +21,7 @@ public class BackupCommand extends CommandBase {
 	
 	@Override
 	public int getRequiredPermissionLevel() {
-		return 3;
+		return Config.needOpToBackup ? 2 : 0;
 	}
 
 	@Override
@@ -31,7 +32,7 @@ public class BackupCommand extends CommandBase {
 			throw new CommandException("commands.backups.backup.inProgress");
 		
 		notifyOperators(sender, this, "commands.backups.backup.success");
-		BackupManager.startBackup(BackupReason.USER);
+		BackupManager.startBackup(BackupReason.USER, args.length > 0 ? String.join(" ", args) : null);
 	}
 
 }

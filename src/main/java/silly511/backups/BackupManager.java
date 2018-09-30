@@ -3,26 +3,34 @@ package silly511.backups;
 import java.awt.image.BufferedImage;
 import java.io.File;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.management.ServerConfigurationManager;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.ChatStyle;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.IChatComponent;
 import net.minecraft.world.MinecraftException;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+import net.minecraftforge.fml.common.network.handshake.NetworkDispatcher;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+import silly511.backups.Config.AnnounceBackupsMode;
 import silly511.backups.helpers.BackupHelper;
+import silly511.backups.helpers.BackupHelper.Backup;
 import silly511.backups.helpers.BackupHelper.BackupReason;
 import silly511.backups.helpers.FileHelper;
 import silly511.backups.helpers.ImageHelper;
 
-public final class BackupManager {
+public class BackupManager {
 		
 	private static long nextBackupTime;
 	private volatile static BackupThread thread;
@@ -30,17 +38,25 @@ public final class BackupManager {
 	
 	public static void serverStarted() {
 		thread = null;
-		nextBackupTime = System.nanoTime() + (isTempWorld() ? Long.MAX_VALUE : 5_000_000_000L);
+		
+		if (isTempWorld())
+			nextBackupTime = System.nanoTime() + Long.MAX_VALUE;
+		else if (Config.backupInterval > 0)
+			startBackup(BackupReason.WORLD_JOIN, null);
 	}
 	
 	@SubscribeEvent
 	public void serverTick(TickEvent.ServerTickEvent event) {
 		if (Config.backupInterval > 0 && thread == null && System.nanoTime() - nextBackupTime >= 0)
-			startBackup(BackupReason.SCHEDULED);
+			startBackup(BackupReason.SCHEDULED, null);
 		
 		if (thread != null && !thread.isAlive()) {
 			restoreSaving();
-			postTagMessage(thread.errored ? "backups.failed" : "backups.finished");
+			
+			if (thread.errored)
+				postTagMessage("backups.failed", "Backup failed");
+			else
+				postTagMessage("backups.finished", "Finished backup");
 			
 			nextBackupTime = System.nanoTime() + Config.backupInterval * 60_000_000_000L;
 			thread = null;
@@ -49,18 +65,32 @@ public final class BackupManager {
 	
 	@SubscribeEvent
 	@SideOnly(Side.CLIENT)
+	public void playerJoin(PlayerLoggedInEvent event) {
+		if (FMLCommonHandler.instance().getSide() == Side.CLIENT && Minecraft.getMinecraft().isSingleplayer()) {
+			if (thread != null)
+				postTagMessage("backups.started", "Started backup");
+			
+			if (isTempWorld())
+				event.player.addChatMessage(new ChatComponentTranslation("backups.temp_world_warning").setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GOLD)));
+		}
+	}
+	
+	@SubscribeEvent
+	@SideOnly(Side.CLIENT)
 	public void worldRenderLast(RenderWorldLastEvent event) {
-		if (thread != null && thread.icon == null)
+		if (thread != null && thread.needsIcon && thread.icon == null)
 			thread.icon = ImageHelper.createIcon(64);
 	}
 	
-	public static void startBackup(BackupReason reason) {
+	public static void startBackup(BackupReason reason, String label) {
 		if (thread != null) return;
 		
-		postTagMessage("backups.started");
+		BackupsMod.logger.info("Starting backup");
+		postTagMessage("backups.started", "Started backup");
 		disableSaving();
 		
-		thread = new BackupThread(DimensionManager.getCurrentSaveRootDirectory(), getCurrentBackupsDir(), reason);
+		File saveDir = DimensionManager.getCurrentSaveRootDirectory();
+		thread = new BackupThread(saveDir, new File(Config.backupsDir, saveDir.getName()), reason, label);
 		thread.start();
 	}
 	
@@ -78,6 +108,7 @@ public final class BackupManager {
 	
 	private static void disableSaving() {
 		MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
+		BackupsMod.logger.info("Disabling world saving");
 		
 		server.getConfigurationManager().saveAllPlayerData();
 		
@@ -102,6 +133,7 @@ public final class BackupManager {
 	
 	private static void restoreSaving() {
 		MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
+		BackupsMod.logger.info("Restoring world saving");
 		
 		for (int i = 0; i < oldSaveStates.length; i++) {
 			WorldServer worldServer = server.worldServers[i];
@@ -111,26 +143,45 @@ public final class BackupManager {
 		}
 	}
 	
-	private static void postTagMessage(String msg) {
-		FMLCommonHandler.instance().getMinecraftServerInstance().getConfigurationManager().sendChatMsg(new ChatComponentText("")
-				.appendSibling(new ChatComponentTranslation("backups.prefix").setChatStyle(new ChatStyle().setColor(EnumChatFormatting.BLUE).setBold(true)))
+	private static void postTagMessage(String transKey, String raw) {
+		if (Config.announceBackups == AnnounceBackupsMode.OFF) return;
+		
+		ServerConfigurationManager scm = FMLCommonHandler.instance().getMinecraftServerInstance().getConfigurationManager();
+		ChatStyle prefixStyle = new ChatStyle().setColor(EnumChatFormatting.BLUE).setBold(true);
+		
+		IChatComponent localizedText = new ChatComponentText("")
+				.appendSibling(new ChatComponentTranslation("backups.prefix").setChatStyle(prefixStyle))
 				.appendText(" ")
-				.appendSibling(new ChatComponentTranslation(msg)));
+				.appendSibling(new ChatComponentTranslation(transKey));
+		
+		IChatComponent rawText = new ChatComponentText("")
+				.appendSibling(new ChatComponentText("[Backups]: ").setChatStyle(prefixStyle))
+				.appendSibling(new ChatComponentText(raw));
+		
+		for (EntityPlayerMP player : scm.playerEntityList)
+			if (Config.announceBackups == AnnounceBackupsMode.ALL_PLAYERS || (Config.announceBackups == AnnounceBackupsMode.OPS_ONLY && scm.canSendCommands(player.getGameProfile()))) {
+				boolean hasMod = NetworkDispatcher.get(player.playerNetServerHandler.getNetworkManager()).getModList().containsKey(BackupsMod.modid);
+				player.addChatMessage(hasMod ? localizedText : rawText);
+			}
 	}
 	
 	public static class BackupThread extends Thread {
 		private File worldDir;
 		private File backupsDir;
 		private BackupReason reason;
+		private String label;
 		
+		@SideOnly(Side.CLIENT)
 		private volatile BufferedImage icon;
+		private volatile boolean needsIcon;
 		
 		private boolean errored;
 
-		public BackupThread(File worldDir, File backupsDir, BackupReason reason) {
+		public BackupThread(File worldDir, File backupsDir, BackupReason reason, String label) {
 			this.worldDir = worldDir;
 			this.backupsDir = backupsDir;
 			this.reason = reason;
+			this.label = label;
 			
 			this.setDaemon(true);
 			this.setName("Backup Thread");
@@ -139,19 +190,30 @@ public final class BackupManager {
 		@Override
 		public void run() {
 			try {
-				if (FMLCommonHandler.instance().getSide() == Side.CLIENT)
-					while (icon == null)
-						try { sleep(20); } catch (InterruptedException ex) {}
+				boolean isClient = FMLCommonHandler.instance().getSide() == Side.CLIENT;
 				
 				if (Config.trimmingEnabled)
 					BackupHelper.trimBackups(backupsDir);
 				
-				BackupHelper.backup(worldDir, backupsDir, reason, icon);
+				Backup backup = BackupHelper.backup(worldDir, backupsDir, reason, isClient ? () -> fetchIcon() : null);
+				if (label != null) backup.setLabel(label);
+				
+				BackupsMod.logger.info("Finished backup");
 			} catch (Exception ex) {
 				errored = true;
 				
 				BackupsMod.logger.error("Backup failed", ex);
 			}
+		}
+		
+		@SideOnly(Side.CLIENT)
+		private BufferedImage fetchIcon() {
+			needsIcon = true;
+			
+			for (int i = 0; i < 50 && icon == null; i++)
+				try { sleep(20); } catch (InterruptedException ex) {}
+			
+			return icon;
 		}
 		
 	}

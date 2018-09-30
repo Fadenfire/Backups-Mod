@@ -14,7 +14,7 @@ buildscript {
 
 apply plugin: 'net.minecraftforge.gradle.forge'
 
-version = "1.8.9-1.3"
+version = "1.8.9-1.4"
 group = "silly511.backups"
 archivesBaseName = "Backups"
 libsDirName = "../releases"
@@ -25,9 +25,15 @@ minecraft {
     version = "1.8.9-11.15.1.2318-1.8.9"
     runDir = "run"
     mappings = "stable_22"
+    makeObfSourceJar = false
 }
 
-jar { manifest { attributes 'FMLAT': 'backups_at.cfg' } }
+jar {
+    manifest {
+        attributes 'FMLAT': 'backups_at.cfg'
+        attributes 'Main-Class': 'silly511.backups.CommandLineRestore'
+    }
+}
 
 processResources {
     inputs.property "version", project.version

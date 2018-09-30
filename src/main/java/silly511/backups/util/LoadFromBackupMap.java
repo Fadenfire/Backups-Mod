@@ -1,12 +1,11 @@
 package silly511.backups.util;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.zip.InflaterOutputStream;
 
 import net.minecraft.world.chunk.storage.RegionFile;
 import silly511.backups.BackupsMod;
@@ -30,11 +29,11 @@ public class LoadFromBackupMap extends HashMap<File, RegionFile> {
 		
 		if (regionFile == null && key instanceof File && !((File) key).exists()) {
 			File file = FileHelper.normalize((File) key);
-			Path backupFile = FileHelper.relativize(tempWorldDir, file, backupDir);
+			Path backupFile = FileHelper.relativizeAdd(tempWorldDir, file, backupDir, ".gz");
 			
 			if (Files.isRegularFile(backupFile))
-				try (InflaterOutputStream out = new InflaterOutputStream(new FileOutputStream(file))) {
-					Files.copy(backupFile, out);
+				try (InputStream in = new GzipInputStream(Files.newInputStream(backupFile), 8192)) {
+					Files.copy(in, file.toPath());
 				} catch (IOException ex) {
 					BackupsMod.logger.error("Error loading region file from backup", ex);
 				}
