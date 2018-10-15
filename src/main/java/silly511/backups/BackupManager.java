@@ -133,9 +133,10 @@ public class BackupManager {
 	
 	private static void restoreSaving() {
 		MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
+		int l = Math.min(oldSaveStates.length, server.worldServers.length);
 		BackupsMod.logger.info("Restoring world saving");
 		
-		for (int i = 0; i < oldSaveStates.length; i++) {
+		for (int i = 0; i < l; i++) {
 			WorldServer worldServer = server.worldServers[i];
 			
 			if (worldServer != null)
@@ -160,7 +161,15 @@ public class BackupManager {
 		
 		for (EntityPlayerMP player : scm.playerEntityList)
 			if (Config.announceBackups == AnnounceBackupsMode.ALL_PLAYERS || (Config.announceBackups == AnnounceBackupsMode.OPS_ONLY && scm.canSendCommands(player.getGameProfile()))) {
-				boolean hasMod = NetworkDispatcher.get(player.playerNetServerHandler.getNetworkManager()).getModList().containsKey(BackupsMod.modid);
+				NetworkDispatcher networkDispatcher = NetworkDispatcher.get(player.playerNetServerHandler.getNetworkManager());
+				boolean hasMod;
+				
+				try {
+					hasMod = networkDispatcher.getModList().containsKey(BackupsMod.modid);
+				} catch (NullPointerException ex) {
+					hasMod = false; //Sometimes the modlist is null and Collections.unmodifiableMap throws a NPE so I catch it here.
+				}
+				
 				player.addChatMessage(hasMod ? localizedText : rawText);
 			}
 	}
