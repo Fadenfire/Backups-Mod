@@ -21,7 +21,6 @@ import com.google.common.collect.Lists;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiSlot;
-import net.minecraft.client.gui.GuiWorldSelection;
 import net.minecraft.client.gui.GuiYesNo;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.texture.DynamicTexture;
@@ -46,7 +45,7 @@ public class GuiRestoreBackup extends GuiScreen {
 	
 	public static final ResourceLocation MISSING_ICON = new ResourceLocation("textures/misc/unknown_server.png");
 	
-	private GuiWorldSelection parentScreen;
+	private GuiScreen parentScreen;
 	private String worldName;
 	private File worldDir;
 	private File backupsDir;
@@ -60,10 +59,8 @@ public class GuiRestoreBackup extends GuiScreen {
 	private GuiButton enterButton;
 	private GuiButton deleteButton;
 	
-	public GuiRestoreBackup(GuiWorldSelection guiSelectWorld) {
+	public GuiRestoreBackup(GuiScreen guiSelectWorld, WorldSummary worldSummary) {
 		parentScreen = guiSelectWorld;
-		
-		WorldSummary worldSummary = guiSelectWorld.selectionList.getSelectedWorld().worldSummary;
 		
 		worldName = worldSummary.getDisplayName();
 		worldDir = new File("saves", worldSummary.getFileName());

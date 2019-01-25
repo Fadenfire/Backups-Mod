@@ -38,7 +38,7 @@ public class BackupsButton extends GuiButton {
 			if (Keyboard.isKeyDown(Keyboard.KEY_LMENU) || Keyboard.isKeyDown(Keyboard.KEY_RMENU))
 				return true;
 			else
-				mc.displayGuiScreen(new GuiRestoreBackup(parentScreen));
+				mc.displayGuiScreen(new GuiRestoreBackup(parentScreen, parentScreen.selectionList.getSelectedWorld().worldSummary));
 		
 		return false;
 	}

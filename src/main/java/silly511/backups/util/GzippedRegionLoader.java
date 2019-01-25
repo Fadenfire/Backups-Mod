@@ -110,6 +110,7 @@ public class GzippedRegionLoader {
 			blockStates = null;
 		}
 		
+		@SuppressWarnings("deprecation")
 		public ChunkData(NBTTagCompound nbt) {
 			isEmpty = false;
 			blockStates = new IBlockState[16][256][16];
