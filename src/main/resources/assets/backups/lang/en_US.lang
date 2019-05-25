@@ -24,22 +24,24 @@ gui.backups.makingBackup=Making Backup
 gui.backups.restoring=Restoring
 gui.backups.loadingBackup=Loading Backup
 
-commands.backups.lastbackup.usage=/lastbackup
+commands.backups.backupsmod.usage=/backupsmod <backup|lastbackup|restore> ...
+
+commands.backups.lastbackup.usage=/backupsmod lastbackup
 commands.backups.lastbackup.noBackups=No Backups
 commands.backups.lastbackup.success=Last Backup: %s (%s ago)
 
-commands.backups.backup.usage=/backup [label ...]
+commands.backups.backup.usage=/backupsmod backup [label ...]
 commands.backups.backup.inProgress=Backup already in progress
 commands.backups.backup.tempWorld=Can't backup when inside a backup
 commands.backups.backup.success=Started backup
 
-commands.backups.restore.usage=/restore <blocks|player> ...
+commands.backups.restore.usage=/backupsmod restore <blocks|player> ...
 commands.backups.restore.invalidDate='%s' is not a valid date
 commands.backups.restore.notABackup=Backup doesn't exist
 commands.backups.restore.error=An error occurred, the backup may be corrupted
-commands.backups.restore.area.usage=/restore blocks <x1> <y1> <z1> <x2> <y2> <z2> <backup>
+commands.backups.restore.area.usage=/backupsmod restore blocks <x1> <y1> <z1> <x2> <y2> <z2> <backup>
 commands.backups.restore.area.success=Restored %s blocks from %s
-commands.backups.restore.player.usage=/restore player <player> <backup>
+commands.backups.restore.player.usage=/backupsmod restore player <player> <backup>
 commands.backups.restore.player.success=Restored the inventory of %s to %s
 
 backups.misc.today=Today

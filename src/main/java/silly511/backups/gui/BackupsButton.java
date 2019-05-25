@@ -23,11 +23,11 @@ public class BackupsButton extends GuiButton {
 	
 	@Override
 	public void drawButton(Minecraft mc, int mouseX, int mouseY, float partialTicks) {
-		boolean optionKeyDown = Keyboard.isKeyDown(Keyboard.KEY_LMENU) || Keyboard.isKeyDown(Keyboard.KEY_RMENU);
+		boolean shiftKeyDown = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
 		GuiListWorldSelectionEntry selected = parentScreen.selectionList.getSelectedWorld();
 		
-		this.displayString = optionKeyDown ? recreateText : backupsText;
-		this.enabled = selected == null ? false : optionKeyDown ? !(selected instanceof BackupsOnlyWorldEntry) : true;
+		this.displayString = shiftKeyDown ? recreateText : backupsText;
+		this.enabled = selected == null ? false : shiftKeyDown ? !(selected instanceof BackupsOnlyWorldEntry) : true;
 		
 		super.drawButton(mc, mouseX, mouseY, partialTicks);
 	}
@@ -35,7 +35,7 @@ public class BackupsButton extends GuiButton {
 	@Override
 	public boolean mousePressed(Minecraft mc, int mouseX, int mouseY) {
 		if (super.mousePressed(mc, mouseX, mouseY))
-			if (Keyboard.isKeyDown(Keyboard.KEY_LMENU) || Keyboard.isKeyDown(Keyboard.KEY_RMENU))
+			if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT))
 				return true;
 			else
 				mc.displayGuiScreen(new GuiRestoreBackup(parentScreen, parentScreen.selectionList.getSelectedWorld().worldSummary));

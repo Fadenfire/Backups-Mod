@@ -32,17 +32,14 @@ import net.minecraftforge.fml.common.event.FMLServerStoppedEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
-import silly511.backups.commands.BackupCommand;
-import silly511.backups.commands.LastBackupCommand;
-import silly511.backups.commands.RestoreCommand;
+import silly511.backups.commands.BackupsModCommand;
 import silly511.backups.gui.BackupsButton;
 import silly511.backups.gui.BackupsButtonFallback;
 import silly511.backups.gui.BackupsOnlyWorldEntry;
-import silly511.backups.helpers.BackupHelper;
 import silly511.backups.helpers.FileHelper;
 
 @EventBusSubscriber
-@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.4.4", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
+@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.4.5", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
 public class BackupsMod {
 	
 	public static final String modid = "backups";
@@ -59,15 +56,19 @@ public class BackupsMod {
 		try {
 			File backupsDir = new File(Config.backupsDir);
 			File versionFile = new File(backupsDir, "version");
+			int version = 0;
 			
-			if (!versionFile.isFile() || !FileUtils.readFileToString(versionFile, StandardCharsets.UTF_8).equals("1")) {
-				if (backupsDir.isDirectory())
-					BackupHelper.updateBackups(backupsDir);
-				else
-					backupsDir.mkdir();
-				
-				FileUtils.write(versionFile, "1", StandardCharsets.UTF_8);
+			try {
+				if (versionFile.isFile())
+					version = Integer.parseInt(FileUtils.readFileToString(versionFile, StandardCharsets.UTF_8));
+			} catch (IOException | NumberFormatException ex) {}
+			
+			if (version <= 0 && backupsDir.exists()) {
+				backupsDir.renameTo(new File("backups_oldformat"));
 			}
+			
+			backupsDir.mkdirs();
+			FileUtils.write(versionFile, "1", StandardCharsets.UTF_8);
 		} catch (IOException ex) {
 			logger.error("Error trying to convert backups", ex);
 		}
@@ -75,9 +76,7 @@ public class BackupsMod {
 	
 	@EventHandler
 	public void serverStarting(FMLServerStartingEvent event) {
-		event.registerServerCommand(new BackupCommand());
-		event.registerServerCommand(new RestoreCommand());
-		event.registerServerCommand(new LastBackupCommand());
+		event.registerServerCommand(new BackupsModCommand());
 	}
 	
 	@EventHandler

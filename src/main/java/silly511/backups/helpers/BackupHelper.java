@@ -1,12 +1,8 @@
 package silly511.backups.helpers;
 
 import java.awt.image.BufferedImage;
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -17,7 +13,6 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -26,10 +21,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.zip.Deflater;
-import java.util.zip.InflaterInputStream;
-import java.util.zip.ZipException;
 
 import org.apache.commons.io.FileUtils;
 
@@ -38,8 +29,6 @@ import com.google.common.collect.ImmutableList;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.common.ForgeVersion;
-import net.minecraftforge.fml.common.ProgressManager;
-import net.minecraftforge.fml.common.ProgressManager.ProgressBar;
 import silly511.backups.BackupsMod;
 import silly511.backups.Config;
 import silly511.backups.util.GzipInputStream;
@@ -184,67 +173,6 @@ public final class BackupHelper {
 		File last = new File(backupsDir, "Last");
 		
 		return last.isFile() ? new File(backupsDir, FileUtils.readFileToString(last, StandardCharsets.UTF_8)) : last;
-	}
-	
-	public static void updateBackups(File allBackupsDir) {
-		try {
-			Path tempFile = Files.createTempFile(null, null);
-			
-			try {
-				BackupsMod.logger.info("Converting backups to new format");
-				
-				List<File> backupsDirs = Arrays.stream(allBackupsDir.listFiles()).filter(File::isDirectory).collect(Collectors.toList());
-				ProgressBar bar = ProgressManager.push("Converting Backups", backupsDirs.size());
-				
-				for (File backupsDir : backupsDirs) {
-					bar.step(backupsDir.getName());
-					
-					for (File backupDir : backupsDir.listFiles()) {
-						File metadataFile = new File(backupDir, "backupMetadata.dat");
-						
-						if (!metadataFile.isFile()) continue;
-						BackupsMod.logger.info("Converting backup: " + backupsDir.getName() + "/" + backupDir.getName());
-						
-						for (File file : FileHelper.listFiles(backupDir, true)) {
-							Path path = file.toPath();
-							file.setWritable(true);
-							
-							if (!file.isFile() || file.equals(metadataFile) || Files.isSymbolicLink(path)) continue;
-							
-							//Check if file is already in new format
-							try (InputStream in = new BufferedInputStream(new FileInputStream(file), 3)) {
-								if (in.read() == 0x1F && in.read() == 0x8B && in.read() == Deflater.DEFLATED) {
-									if (!file.toString().endsWith(".gz"))
-										Files.move(path, path.resolveSibling(path.getFileName() + ".gz"));
-									
-									continue;
-								}
-							}
-							
-							try (InputStream in = new InflaterInputStream(new FileInputStream(file))) {
-								Files.copy(in, tempFile, StandardCopyOption.REPLACE_EXISTING);
-							} catch (ZipException ex) {
-								continue; //Ignore files that aren't compressed
-							}
-							
-							try (OutputStream out = new GzipOutputStream(new FileOutputStream(file), Files.getLastModifiedTime(path, LinkOption.NOFOLLOW_LINKS))) {
-								Files.copy(tempFile, out);
-							}
-							
-							Files.move(path, path.resolveSibling(path.getFileName() + ".gz"));
-						}
-					}
-				}
-				
-				ProgressManager.pop(bar);
-			} finally {
-				Files.delete(tempFile);
-			}
-			
-			BackupsMod.logger.info("Finished converting backups");
-		} catch (Exception ex) {
-			throw new IllegalStateException("Error while converting backups, backups may be corrupted!", ex);
-		}
 	}
 	
 	public static List<Backup> listAllBackups(File backupsDir) {

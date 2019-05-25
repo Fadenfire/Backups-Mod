@@ -92,10 +92,8 @@ public class GuiRestoreBackup extends GuiScreen {
 		drawDefaultBackground();
 		list.drawScreen(mouseX, mouseY, partialTicks);
 		
-		String size = list.totalDirSize != -1 ? FormatHelper.shortenNumber(list.totalDirSize, 1024) + "Bs" : calculatingText;
-		
 		drawCenteredString(fontRenderer, I18n.format("gui.backups.title"), width / 2, 20, 0xFFFFFF);
-		drawString(fontRenderer, size, width - 5 - fontRenderer.getStringWidth(size), 20, 0xFFFFFF);
+		drawString(fontRenderer, list.totalDirSize, width - 5 - fontRenderer.getStringWidth(list.totalDirSize), 20, 0xFFFFFF);
 		super.drawScreen(mouseX, mouseY, partialTicks);
 	}
 	
@@ -177,16 +175,25 @@ public class GuiRestoreBackup extends GuiScreen {
 		list.handleMouseInput();
 	}
 	
+	@Override
+	protected void keyTyped(char typedChar, int keyCode) throws IOException {
+		if (isKeyComboCtrlA(keyCode))
+			list.selectAll();
+		
+		super.keyTyped(typedChar, keyCode);
+	}
+	
 	private class BackupsList extends GuiSlot {
 		
 		public final List<BackupsListEntry> entries = new ArrayList<>();
 		public final Set<BackupsListEntry> selected = new HashSet<>();
 		
-		public long totalDirSize = -1;
+		public volatile String totalDirSize;
 		
 		public BackupsList(List<Backup> backups) {
 			super(GuiRestoreBackup.this.mc, GuiRestoreBackup.this.width, GuiRestoreBackup.this.height, 32, GuiRestoreBackup.this.height - 64, 31);
-			headerPadding = 2;
+			this.headerPadding = 2;
+			this.totalDirSize = calculatingText;
 			
 			ZoneId timeZone = ZoneId.systemDefault();
 			long currentDay = LocalDate.now().toEpochDay();
@@ -238,6 +245,10 @@ public class GuiRestoreBackup extends GuiScreen {
 				}
 		}
 		
+		public void selectAll() {
+			selected.addAll(entries);
+		}
+		
 		@Override
 		protected boolean isSelected(int slotIndex) {
 			return selected.contains(entries.get(slotIndex));
@@ -250,14 +261,8 @@ public class GuiRestoreBackup extends GuiScreen {
 		protected void drawSlot(int entryID, int x, int y, int height, int mouseX, int mouseY, float partialTicks) {
 			BackupsListEntry entry = entries.get(entryID);
 			
-			Backup backup = entry.backup;
-			String time = backup.time.atZone(ZoneId.systemDefault()).format(FormatHelper.dateTimeFormat);
-			String reason = I18n.format(backup.reason != null ? backup.reason.tranKey : "backups.reason.unknown");
-			String size = entry.size != -1 ? FormatHelper.shortenNumber(entry.size, 1024) + "Bs" : calculatingText;
-			String title = backup.getLabel() == null ? time : TextFormatting.UNDERLINE + backup.getLabel() + TextFormatting.RESET + "" + TextFormatting.GRAY + " (" + time + ")";
-			
-			fontRenderer.drawString(title, x + 27, y + 1, 0xFFFFFF);
-			fontRenderer.drawString(reason + ", " + backup.mcVersion + " (" + size + ")", x + 27, y + 12, 0x808080);
+			fontRenderer.drawString(entry.title, x + 27, y + 1, 0xFFFFFF);
+			fontRenderer.drawString(entry.desc + entry.size + ")", x + 27, y + 12, 0x808080);
 			
 			if (entry.header != null) {
 				int x2 = Math.max(x - 120, 5);
@@ -320,10 +325,11 @@ public class GuiRestoreBackup extends GuiScreen {
 								size += attr.size();
 						}
 						
-						total += entry.size = size;
+						entry.size = FormatHelper.shortenNumber(size, 1024) + "Bs";
+						total += size;
 					}
 					
-					totalDirSize = total;
+					totalDirSize = FormatHelper.shortenNumber(total, 1024) + "Bs";
 				} catch (Exception ex) {
 					ex.printStackTrace();
 				}
@@ -334,13 +340,22 @@ public class GuiRestoreBackup extends GuiScreen {
 			
 			public final Backup backup;
 			public final String header;
-			public long size = -1;
+			public final String title;
+			public final String desc;
+			public volatile String size;
 			
 			public ResourceLocation iconLoc;
 			
 			public BackupsListEntry(Backup backup, String header) {
 				this.backup = backup;
 				this.header = header;
+				this.size = calculatingText;
+				
+				String time = backup.time.atZone(ZoneId.systemDefault()).format(FormatHelper.dateTimeFormat);
+				this.title = backup.getLabel() == null ? time : TextFormatting.UNDERLINE + backup.getLabel() + TextFormatting.RESET + "" + TextFormatting.GRAY + " (" + time + ")";
+				
+				String reason = I18n.format(backup.reason != null ? backup.reason.tranKey : "backups.reason.unknown");
+				this.desc = reason + ", " + backup.mcVersion + " (";
 				
 				if (backup.iconData != null) {
 					iconLoc = new ResourceLocation(BackupsMod.modid, "backup/" + worldDir.getName() + "/" + backup.dir.getName() + "/icon");
