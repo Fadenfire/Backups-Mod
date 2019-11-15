@@ -23,12 +23,16 @@ gui.backups.confirmRestore2=A backup of the world will be made of before it is r
 gui.backups.makingBackup=Making Backup
 gui.backups.restoring=Restoring
 gui.backups.loadingBackup=Loading Backup
+gui.backups.errorRestoring1=Unable to restore backup.
+gui.backups.errorRestoring2=The backup might be corrupted. Check logs for more details.
 
 commands.backups.backupsmod.usage=/backupsmod <backup|lastbackup|restore> ...
 
 commands.backups.lastbackup.usage=/backupsmod lastbackup
 commands.backups.lastbackup.noBackups=No Backups
 commands.backups.lastbackup.success=Last Backup: %s (%s ago)
+
+commands.backups.listbackups.usage=/backupsmod listbackups
 
 commands.backups.backup.usage=/backupsmod backup [label ...]
 commands.backups.backup.inProgress=Backup already in progress
@@ -43,6 +47,8 @@ commands.backups.restore.area.usage=/backupsmod restore blocks <x1> <y1> <z1> <x
 commands.backups.restore.area.success=Restored %s blocks from %s
 commands.backups.restore.player.usage=/backupsmod restore player <player> <backup>
 commands.backups.restore.player.success=Restored the inventory of %s to %s
+
+commands.backups.serverrestore.usage=/backupsmod serverrestore <backup>
 
 backups.misc.today=Today
 backups.misc.yesterday=Yesterday

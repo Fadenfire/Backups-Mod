@@ -31,7 +31,7 @@ import silly511.backups.helpers.BackupHelper.BackupReason;
 import silly511.backups.helpers.FileHelper;
 import silly511.backups.helpers.ImageHelper;
 
-@EventBusSubscriber
+@EventBusSubscriber(modid = BackupsMod.modid)
 public class BackupManager {
 		
 	private static long nextBackupTime;
@@ -43,7 +43,7 @@ public class BackupManager {
 		
 		if (isTempWorld())
 			nextBackupTime = System.nanoTime() + Long.MAX_VALUE;
-		else if (Config.backupInterval > 0)
+		else if (Config.backupInterval > 0 && Config.backupOnWorldStart)
 			startBackup(BackupReason.WORLD_JOIN, null);
 	}
 	

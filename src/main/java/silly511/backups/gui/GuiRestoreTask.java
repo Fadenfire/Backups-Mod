@@ -2,23 +2,25 @@ package silly511.backups.gui;
 
 import java.util.function.Consumer;
 
+import net.minecraft.client.gui.GuiErrorScreen;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
+import silly511.backups.BackupsMod;
 import silly511.backups.util.IOConsumer;
 
-public class GuiTask extends GuiScreen {
+public class GuiRestoreTask extends GuiScreen {
 	
 	private volatile String status = "";
 	private Runnable endTask;
 	private final TaskThread thread;
 	private boolean displayed;
 	
-	public GuiTask(GuiScreen parent, IOConsumer<Consumer<String>> task) {
+	public GuiRestoreTask(GuiScreen parent, IOConsumer<Consumer<String>> task) {
 		this.endTask = () -> mc.displayGuiScreen(parent);
 		this.thread = new TaskThread(task);
 	}
 	
-	public GuiTask(IOConsumer<Consumer<String>> task, Runnable endTask) {
+	public GuiRestoreTask(IOConsumer<Consumer<String>> task, Runnable endTask) {
 		this.endTask = endTask;
 		this.thread = new TaskThread(task);
 	}
@@ -34,10 +36,13 @@ public class GuiTask extends GuiScreen {
 	@Override
 	public void drawScreen(int mouseX, int mouseY, float partialTicks) {
 		if (!thread.isAlive()) {
-			if (thread.error != null)
-				throw new RuntimeException("Error executing task", thread.error);
-			
-			endTask.run();
+			if (thread.error != null) {
+				BackupsMod.logger.error("Error restoring backup", thread.error);
+				mc.displayGuiScreen(new GuiErrorScreen(I18n.format("gui.backups.errorRestoring1"), I18n.format("gui.backups.errorRestoring2")));
+			} else {
+				endTask.run();
+				return;
+			}
 		}
 		
 		drawBackground(0);

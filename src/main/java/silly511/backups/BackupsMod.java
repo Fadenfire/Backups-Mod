@@ -33,13 +33,14 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import silly511.backups.commands.BackupsModCommand;
+import silly511.backups.commands.ServerRestoreCommand;
 import silly511.backups.gui.BackupsButton;
 import silly511.backups.gui.BackupsButtonFallback;
 import silly511.backups.gui.BackupsOnlyWorldEntry;
 import silly511.backups.helpers.FileHelper;
 
 @EventBusSubscriber
-@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.4.5", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
+@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.4.8", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
 public class BackupsMod {
 	
 	public static final String modid = "backups";
@@ -100,6 +101,8 @@ public class BackupsMod {
 				logger.error("Unable to delete temp worlds", ex);
 			}
 		}
+		
+		ServerRestoreCommand.onServerShutdown();
 	}
 	
 	@SubscribeEvent

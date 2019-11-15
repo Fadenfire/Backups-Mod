@@ -14,6 +14,9 @@ public class Config {
 	@RangeInt(min = 0)
 	public static int backupInterval = 15;
 	
+	@Comment("Whether to create a backup when a world is opened")
+	public static boolean backupOnWorldStart = true;
+	
 	@Comment("If a world is deleted but still has backups, then an entry for the world will still be shown in the world selection list")
 	public static boolean showDeletedWorlds = true;
 	

@@ -84,8 +84,8 @@ public final class FileHelper {
 	
 	public static FileTime readGzipTime(Path file) throws IOException {
 		try (DataInputStream in = new DataInputStream(new BufferedInputStream(Files.newInputStream(file), 64))) {
-			if (in.read() != 0x1F || in.read() != 0x8B) throw new IOException("Corrupted GZIP file");
-			if (in.readUnsignedByte() != Deflater.DEFLATED) throw new IOException("Unsupported compression method");
+			if (in.read() != 0x1F || in.read() != 0x8B) return null;
+			if (in.readUnsignedByte() != Deflater.DEFLATED) return null;
 			in.skip(1);
 			
 			return FileTime.from(Integer.reverseBytes(in.readInt()), TimeUnit.SECONDS);

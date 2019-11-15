@@ -1,6 +1,7 @@
 package silly511.backups.commands;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import com.google.common.collect.ImmutableList;
@@ -22,6 +23,8 @@ public class BackupsModCommand extends CommandBase {
 		builder.add(new RestoreCommand());
 		builder.add(new BackupCommand());
 		builder.add(new LastBackupCommand());
+		builder.add(new ServerRestoreCommand());
+		builder.add(new ListBackupsCommand());
 		
 		subCommands = builder.build();
 		nameArray = new String[subCommands.size()];
@@ -33,6 +36,11 @@ public class BackupsModCommand extends CommandBase {
 	@Override
 	public String getName() {
 		return "backupsmod";
+	}
+	
+	@Override
+	public List<String> getAliases() {
+		return Arrays.asList("bm");
 	}
 
 	@Override
@@ -46,13 +54,22 @@ public class BackupsModCommand extends CommandBase {
 	}
 	
 	@Override
+	public boolean checkPermission(MinecraftServer server, ICommandSender sender) {
+		return true;
+	}
+	
+	@Override
 	public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, BlockPos targetPos) {
 		if (args.length == 1)
 			return getListOfStringsMatchingLastWord(args, nameArray);
 		if (args.length > 1)
 			for (CommandBase subCommand : subCommands)
-				if (subCommand.getName().equals(args[0]))
+				if (subCommand.getName().equals(args[0])) {
+					if (!subCommand.checkPermission(server, sender))
+						return Collections.emptyList();
+					
 					return subCommand.getTabCompletions(server, sender, Arrays.copyOfRange(args, 1, args.length), targetPos);
+				}
 		
 		return super.getTabCompletions(server, sender, args, targetPos);
 	}

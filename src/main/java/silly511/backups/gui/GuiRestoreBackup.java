@@ -3,6 +3,7 @@ package silly511.backups.gui;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.lwjgl.input.Keyboard;
 
 import com.google.common.collect.Lists;
@@ -114,7 +116,7 @@ public class GuiRestoreBackup extends GuiScreen {
 		} else if (button.id == 3) {
 			File tempWorldDir = new File("tempWorlds", String.valueOf(new Random().nextInt()));
 			
-			mc.displayGuiScreen(new GuiTask(status -> {
+			mc.displayGuiScreen(new GuiRestoreTask(status -> {
 				status.accept("gui.backups.loadingBackup");
 				
 				//Restore backup to temp dir, but without region files
@@ -147,7 +149,7 @@ public class GuiRestoreBackup extends GuiScreen {
 			if (!result) {
 				mc.displayGuiScreen(this);
 			} else if (id == 0) {
-				mc.displayGuiScreen(new GuiTask(parentScreen, status -> {
+				mc.displayGuiScreen(new GuiRestoreTask(parentScreen, status -> {
 					if (worldDir.isDirectory()) {
 						status.accept("gui.backups.makingBackup");
 						BackupHelper.backup(worldDir, backupsDir, BackupReason.RESTORE, null);
@@ -321,7 +323,7 @@ public class GuiRestoreBackup extends GuiScreen {
 						for (File file : FileHelper.listFiles(entry.backup.dir, false)) {
 							BasicFileAttributes attr = Files.readAttributes(file.toPath(), BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
 							
-							if (!attr.isDirectory() && fileKeys.add(attr.fileKey()))
+							if (!attr.isDirectory() && fileKeys.add(getFileKey(attr)))
 								size += attr.size();
 						}
 						
@@ -333,6 +335,21 @@ public class GuiRestoreBackup extends GuiScreen {
 				} catch (Exception ex) {
 					ex.printStackTrace();
 				}
+			}
+			
+			public Object getFileKey(BasicFileAttributes attr) {
+				if (SystemUtils.IS_OS_WINDOWS && winFileAttribsClass != null && winFileAttribsClass.isInstance(attr)) {
+					try {
+						WindowsFileKey key = new WindowsFileKey();
+						key.volSerialNumber = winVolSerialNumberF.getInt(attr);
+						key.fileIndexHigh = winFileIndexHighF.getInt(attr);
+						key.fileIndexLow = winFileIndexLowF.getInt(attr);
+						
+						return key;
+					} catch (IllegalAccessException ex) {}
+				}
+				
+				return attr.fileKey();
 			}
 		}
 		
@@ -375,6 +392,70 @@ public class GuiRestoreBackup extends GuiScreen {
 			
 		}
 		
+	}
+	
+	//I have to use this mess because for some reason BasicFileAttributes.fileKey() just returns null on windows
+	
+	private static Class<?> winFileAttribsClass;
+	private static Field winVolSerialNumberF, winFileIndexHighF, winFileIndexLowF;
+	
+	static {
+		if (SystemUtils.IS_OS_WINDOWS) {
+			Class<?> fileAttribsClass = null;
+			
+			try {
+				fileAttribsClass = Class.forName("sun.nio.fs.WindowsFileAttributes");
+			} catch (ClassNotFoundException ex) {}
+			
+			if (fileAttribsClass != null) {
+				Field volSerialNumber = null, fileIndexHigh = null, fileIndexLow = null;
+				boolean foundAll = false;
+				
+				try {
+					volSerialNumber = fileAttribsClass.getDeclaredField("volSerialNumber");
+					volSerialNumber.setAccessible(true);
+					
+					fileIndexHigh = fileAttribsClass.getDeclaredField("fileIndexHigh");
+					fileIndexHigh.setAccessible(true);
+					
+					fileIndexLow = fileAttribsClass.getDeclaredField("fileIndexLow");
+					fileIndexLow.setAccessible(true);
+					
+					foundAll = true;
+				} catch (NoSuchFieldException ex) {}
+				
+				if (foundAll) {
+					winFileAttribsClass = fileAttribsClass;
+					winVolSerialNumberF = volSerialNumber;
+					winFileIndexHighF = fileIndexHigh;
+					winFileIndexLowF = fileIndexLow;
+				}
+			}
+		}
+	}
+	
+	private static class WindowsFileKey {
+		public int volSerialNumber, fileIndexHigh, fileIndexLow;
+		
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == this) return true;
+			if (obj == null || !(obj instanceof WindowsFileKey)) return false;
+			
+			WindowsFileKey o = (WindowsFileKey) obj;
+			
+			return volSerialNumber == o.volSerialNumber && fileIndexHigh == o.fileIndexHigh && fileIndexLow == o.fileIndexLow;
+		}
+		
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + fileIndexHigh;
+			result = prime * result + fileIndexLow;
+			result = prime * result + volSerialNumber;
+			return result;
+		}
 	}
 
 }

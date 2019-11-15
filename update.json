@@ -2,7 +2,7 @@
   "homepage": "https://minecraft.curseforge.com/projects/backups",
   "promos": {
     "1.8.9-recommended": "1.4.1",
-    "1.12.2-recommended": "1.4.5"
+    "1.12.2-recommended": "1.4.8"
   },
   
   "1.8.9": {
@@ -21,6 +21,7 @@
     "1.4.2": "Fix issue 5.\nFixed backup message now being localized for client without the mod.\nFixed /lastbackup command crashing on servers.",
     "1.4.3": "Fix some bugs.",
     "1.4.4": "Fixed conflict with Open Terrain Generator mod.",
-    "1.4.5": "Removed buggy backup update code.\nBundled all commands into one command to be more compatible with other mods like world edit."
+    "1.4.5": "Removed buggy backup update code.\nBundled all commands into one command to be more compatible with other mods like world edit.",
+    "1.4.8": "Added listbackups and serverrestore commands.\nAdded config option for backups at world start."
   }
 }

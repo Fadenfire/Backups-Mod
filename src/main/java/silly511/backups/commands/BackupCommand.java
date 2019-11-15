@@ -24,6 +24,11 @@ public class BackupCommand extends CommandBase {
 	public int getRequiredPermissionLevel() {
 		return Config.needOpToBackup ? 2 : 0;
 	}
+	
+	@Override
+	public boolean checkPermission(MinecraftServer server, ICommandSender sender) {
+		return server.isSinglePlayer() || super.checkPermission(server, sender);
+	}
 
 	@Override
 	public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException {
