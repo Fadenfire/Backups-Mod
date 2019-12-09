@@ -1,7 +1,3 @@
-backups.started=Started backup
-backups.finished=Finished backup
-backups.failed=Backup failed! Check log for more details
-backups.prefix=[Backups]:
 backups.temp_world_warning=Since you are inside a backup, no changes will be saved
 
 backups.reason.unknown=Unknown

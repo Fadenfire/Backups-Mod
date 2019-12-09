@@ -3,6 +3,8 @@ package silly511.backups;
 import java.awt.image.BufferedImage;
 import java.io.File;
 
+import it.unimi.dsi.fastutil.ints.Int2BooleanMap;
+import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
@@ -13,7 +15,9 @@ import net.minecraft.util.text.TextComponentString;
 import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.MinecraftException;
+import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
+import net.minecraft.world.storage.WorldInfo;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.fml.common.FMLCommonHandler;
@@ -21,7 +25,6 @@ import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
-import net.minecraftforge.fml.common.network.handshake.NetworkDispatcher;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import silly511.backups.Config.AnnounceBackupsMode;
@@ -33,34 +36,36 @@ import silly511.backups.helpers.ImageHelper;
 
 @EventBusSubscriber(modid = BackupsMod.modid)
 public class BackupManager {
-		
-	private static long nextBackupTime;
+	
+	private static WorldInfo worldInfo;
+	private static boolean shouldBackup;
 	private volatile static BackupThread thread;
-	private static boolean[] oldSaveStates;
+	private static Int2BooleanMap oldSaveStates;
 	
 	public static void serverStarted() {
-		thread = null;
-		
-		if (isTempWorld())
-			nextBackupTime = System.nanoTime() + Long.MAX_VALUE;
-		else if (Config.backupInterval > 0 && Config.backupOnWorldStart)
-			startBackup(BackupReason.WORLD_JOIN, null);
+		worldInfo = null;
+		shouldBackup = Config.backupInterval > 0 && !isTempWorld();
 	}
 	
 	@SubscribeEvent
 	public static void serverTick(TickEvent.ServerTickEvent event) {
-		if (Config.backupInterval > 0 && thread == null && System.nanoTime() - nextBackupTime >= 0)
+		if (worldInfo == null) {
+			World overworld = DimensionManager.getWorld(0);
+			
+			if (overworld != null)
+				worldInfo = overworld.getWorldInfo();
+		} else if (shouldBackup && thread == null && worldInfo.getWorldTotalTime() % (Config.backupInterval * (60 * 20)) == 0) {
 			startBackup(BackupReason.SCHEDULED, null);
+		}
 		
 		if (thread != null && !thread.isAlive()) {
 			restoreSaving();
 			
 			if (thread.errored)
-				postTagMessage("backups.failed", "Backup failed");
+				postTagMessage("Backup failed! Check log for more details");
 			else
-				postTagMessage("backups.finished", "Finished backup");
+				postTagMessage("Finished backup");
 			
-			nextBackupTime = System.nanoTime() + Config.backupInterval * 60_000_000_000L;
 			thread = null;
 		}
 	}
@@ -69,9 +74,6 @@ public class BackupManager {
 	@SideOnly(Side.CLIENT)
 	public static void playerJoin(PlayerLoggedInEvent event) {
 		if (FMLCommonHandler.instance().getSide() == Side.CLIENT && Minecraft.getMinecraft().isSingleplayer()) {
-			if (thread != null)
-				postTagMessage("backups.started", "Started backup");
-			
 			if (isTempWorld())
 				event.player.sendStatusMessage(new TextComponentTranslation("backups.temp_world_warning").setStyle(new Style().setColor(TextFormatting.GOLD)), false);
 		}
@@ -88,7 +90,7 @@ public class BackupManager {
 		if (thread != null) return;
 		
 		BackupsMod.logger.info("Starting backup");
-		postTagMessage("backups.started", "Started backup");
+		postTagMessage("Started backup");
 		disableSaving();
 		
 		File saveDir = DimensionManager.getCurrentSaveRootDirectory();
@@ -114,13 +116,12 @@ public class BackupManager {
 		
 		server.getPlayerList().saveAllPlayerData();
 		
-		oldSaveStates = new boolean[server.worlds.length];
+		oldSaveStates = new Int2BooleanOpenHashMap(server.worlds.length);
 		
-		for (int i = 0; i < oldSaveStates.length; i++) {
-			WorldServer worldServer = server.worlds[i];
+		for (WorldServer worldServer : server.worlds) {
 			if (worldServer == null) continue;
 			
-			oldSaveStates[i] = worldServer.disableLevelSaving;
+			oldSaveStates.put(worldServer.provider.getDimension(), worldServer.disableLevelSaving);
 			
 			try {
 				worldServer.saveAllChunks(true, null);
@@ -135,45 +136,31 @@ public class BackupManager {
 	
 	private static void restoreSaving() {
 		MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
-		int l = Math.min(oldSaveStates.length, server.worlds.length);
 		BackupsMod.logger.info("Restoring world saving");
 		
-		for (int i = 0; i < l; i++) {
-			WorldServer worldServer = server.worlds[i];
+		for (WorldServer worldServer : server.worlds) {
+			int dimId = worldServer.provider.getDimension();
 			
-			if (worldServer != null)
-				worldServer.disableLevelSaving = oldSaveStates[i];
+			if (worldServer != null && oldSaveStates.containsKey(dimId))
+				worldServer.disableLevelSaving = oldSaveStates.get(dimId);
 		}
+		
+		oldSaveStates = null;
 	}
 	
-	private static void postTagMessage(String transKey, String raw) {
+	private static void postTagMessage(String msg) {
 		if (Config.announceBackups == AnnounceBackupsMode.OFF) return;
 		
 		PlayerList playerList = FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList();
 		Style prefixStyle = new Style().setColor(TextFormatting.BLUE).setBold(true);
 		
-		ITextComponent localizedText = new TextComponentString("")
-				.appendSibling(new TextComponentTranslation("backups.prefix").setStyle(prefixStyle))
-				.appendText(" ")
-				.appendSibling(new TextComponentTranslation(transKey));
-		
-		ITextComponent rawText = new TextComponentString("")
+		ITextComponent text = new TextComponentString("")
 				.appendSibling(new TextComponentString("[Backups]: ").setStyle(prefixStyle))
-				.appendSibling(new TextComponentString(raw));
+				.appendSibling(new TextComponentString(msg));
 		
 		for (EntityPlayerMP player : playerList.getPlayers())
-			if (Config.announceBackups == AnnounceBackupsMode.ALL_PLAYERS || (Config.announceBackups == AnnounceBackupsMode.OPS_ONLY && playerList.canSendCommands(player.getGameProfile()))) {
-				NetworkDispatcher networkDispatcher = NetworkDispatcher.get(player.connection.getNetworkManager());
-				boolean hasMod;
-				
-				try {
-					hasMod = networkDispatcher.getModList().containsKey(BackupsMod.modid);
-				} catch (NullPointerException ex) {
-					hasMod = false; //Sometimes the modlist is null and Collections.unmodifiableMap throws a NPE so I catch it here.
-				}
-				
-				player.sendMessage(hasMod ? localizedText : rawText);
-			}
+			if (Config.announceBackups == AnnounceBackupsMode.ALL_PLAYERS || (Config.announceBackups == AnnounceBackupsMode.OPS_ONLY && playerList.canSendCommands(player.getGameProfile())))
+				player.sendMessage(text);
 	}
 	
 	public static class BackupThread extends Thread {

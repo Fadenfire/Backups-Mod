@@ -5,6 +5,7 @@ import java.lang.reflect.Field;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.world.storage.WorldSummary;
 
 public class BackupsButtonFallback extends GuiButton {
@@ -12,7 +13,7 @@ public class BackupsButtonFallback extends GuiButton {
 	private GuiScreen parentScreen;
 	
 	public BackupsButtonFallback(GuiScreen parentScreen) {
-		super(99999, parentScreen.width - 20, parentScreen.height - 20, 20, 20, "B");
+		super(99999, parentScreen.width - 72, parentScreen.height - 20, 72, 20, I18n.format("gui.backups.title"));
 		this.parentScreen = parentScreen;
 	}
 	

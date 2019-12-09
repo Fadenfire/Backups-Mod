@@ -40,7 +40,7 @@ import silly511.backups.gui.BackupsOnlyWorldEntry;
 import silly511.backups.helpers.FileHelper;
 
 @EventBusSubscriber
-@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.4.8", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
+@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.4.9", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
 public class BackupsMod {
 	
 	public static final String modid = "backups";
@@ -108,6 +108,8 @@ public class BackupsMod {
 	@SubscribeEvent
 	@SideOnly(Side.CLIENT)
 	public static void onGuiInit(GuiScreenEvent.InitGuiEvent.Post event) {
+		String className = event.getGui().getClass().getName();
+		
 		if (event.getGui() instanceof GuiWorldSelection) {
 			GuiWorldSelection gui = (GuiWorldSelection) event.getGui();
 			Minecraft mc = Minecraft.getMinecraft();
@@ -137,7 +139,7 @@ public class BackupsMod {
 						}
 				}
 			}
-		} else if (event.getGui().getClass().getName().equals("com.pg85.otg.forge.gui.OTGGuiWorldSelection")) {
+		} else if (className.equals("com.pg85.otg.forge.gui.OTGGuiWorldSelection") || className.equals("com.pg85.otg.forge.gui.mainmenu.OTGGuiWorldSelection")) {
 			event.getButtonList().add(new BackupsButtonFallback(event.getGui()));
 		}
 	}
