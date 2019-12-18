@@ -8,7 +8,7 @@ import net.minecraftforge.common.config.Config.RangeInt;
 public class Config {
 	
 	@Comment("Path to the backups directory")
-	public static String backupsDir = "backups";
+	public static String backupsDir = "backupsmod";
 	
 	@Comment("Number of minutes between automatic backups. Setting to zero will disable automatic backups")
 	@RangeInt(min = 0)
@@ -19,6 +19,9 @@ public class Config {
 	
 	@Comment("If you need to be an op to use /backup. If this is false then any player can use /backup")
 	public static boolean needOpToBackup = true;
+	
+	@Comment("If backups should still happen when there are no player online")
+	public static boolean backupWhenServerEmpty = false;
 	
 	@Comment("Which players can see the Started Backup and Finished Backup messages")
 	public static AnnounceBackupsMode announceBackups = AnnounceBackupsMode.ALL_PLAYERS;
@@ -41,6 +44,10 @@ public class Config {
 		@Comment("Number of days old a backup has to be before it's trimmed to the week")
 		@RangeInt(min = 8, max = 90)
 		public int perWeek = 30;
+		
+		@Comment("Number of days old a backup has to be before it's deleted. Set to zero to keep backups forever")
+		@RangeInt(min = 0)
+		public int maxAge = 0;
 	}
 	
 	public static enum AnnounceBackupsMode {

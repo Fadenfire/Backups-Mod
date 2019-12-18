@@ -4,9 +4,7 @@ import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
 import net.minecraft.client.Minecraft;
@@ -29,25 +27,6 @@ public final class ImageHelper {
 		graphics.dispose();
 		
 		return result;
-	}
-	
-	public static byte[] toCompressedBytes(BufferedImage image) {
-		if (image == null) return null;
-		ByteArrayOutputStream byteArrayStream = new ByteArrayOutputStream();
-		
-		try (DeflaterOutputStream stream = new DeflaterOutputStream(byteArrayStream)) {
-			for (int x = 0; x < image.getWidth(); x++) {
-				for (int y = 0; y < image.getHeight(); y++) {
-					Color color = new Color(image.getRGB(x, y));
-					
-					stream.write(color.getRed());
-					stream.write(color.getGreen());
-					stream.write(color.getBlue());
-				}
-			}
-		} catch (IOException ex) {}
-		
-		return byteArrayStream.toByteArray();
 	}
 	
 	public static BufferedImage fromCompressedBytes(byte[] data, int width, int height) throws IOException {

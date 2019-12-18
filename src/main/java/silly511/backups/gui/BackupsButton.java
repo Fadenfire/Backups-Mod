@@ -6,6 +6,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiListWorldSelectionEntry;
 import net.minecraft.client.gui.GuiWorldSelection;
+import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.resources.I18n;
 
 public class BackupsButton extends GuiButton {
@@ -14,6 +16,7 @@ public class BackupsButton extends GuiButton {
 	
 	private final String recreateText = I18n.format("selectWorld.recreate");
 	private final String backupsText = I18n.format("gui.backups.title");
+	private final String tooltip = I18n.format("gui.backups.backupsbutton.tooltip");
 
 	public BackupsButton(GuiButton oldButton, GuiWorldSelection parentScreen) {
 		super(oldButton.id, oldButton.x, oldButton.y, oldButton.width, oldButton.height, "");
@@ -30,6 +33,12 @@ public class BackupsButton extends GuiButton {
 		this.enabled = selected == null ? false : shiftKeyDown ? !(selected instanceof BackupsOnlyWorldEntry) : true;
 		
 		super.drawButton(mc, mouseX, mouseY, partialTicks);
+		
+		if (isMouseOver()) {
+			parentScreen.drawHoveringText(tooltip, mouseX, mouseY);
+			GlStateManager.disableLighting();
+			RenderHelper.disableStandardItemLighting();
+		}
 	}
 	
 	@Override
@@ -42,7 +51,5 @@ public class BackupsButton extends GuiButton {
 		
 		return false;
 	}
-	
-	
 
 }

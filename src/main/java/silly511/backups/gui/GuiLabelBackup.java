@@ -41,6 +41,7 @@ public class GuiLabelBackup extends GuiScreen {
 	protected void actionPerformed(GuiButton button) throws IOException {
 		if (button.id == 0) {
 			backup.setLabel(textField.getText().trim());
+			backup.writeBackup();
 			
 			mc.displayGuiScreen(parent);
 		} else if (button.id == 1) {

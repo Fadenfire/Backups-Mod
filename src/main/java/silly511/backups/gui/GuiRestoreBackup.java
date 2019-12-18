@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
+import javax.imageio.ImageIO;
+
 import org.apache.commons.lang3.SystemUtils;
 import org.lwjgl.input.Keyboard;
 
@@ -28,6 +30,8 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.crash.CrashReport;
+import net.minecraft.nbt.CompressedStreamTools;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ReportedException;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.text.TextFormatting;
@@ -53,6 +57,8 @@ public class GuiRestoreBackup extends GuiScreen {
 	private File backupsDir;
 	
 	private String calculatingText;
+	private String restoreTooltip;
+	private String enterBackupTooltip;
 	private BackupsList list;
 	
 	private GuiButton restoreButton;
@@ -60,6 +66,8 @@ public class GuiRestoreBackup extends GuiScreen {
 	private GuiButton setLabelButton;
 	private GuiButton enterButton;
 	private GuiButton deleteButton;
+	
+	private int tooltipCounter;
 	
 	public GuiRestoreBackup(GuiScreen guiSelectWorld, WorldSummary worldSummary) {
 		parentScreen = guiSelectWorld;
@@ -72,6 +80,8 @@ public class GuiRestoreBackup extends GuiScreen {
 	@Override
 	public void initGui() {
 		calculatingText = I18n.format("gui.backups.calculating");
+		restoreTooltip = I18n.format("gui.backups.restore.tooltip");
+		enterBackupTooltip = I18n.format("gui.backups.enter.tooltip");
 		
 		list = new BackupsList(BackupHelper.listAllBackups(backupsDir));
 		
@@ -97,6 +107,25 @@ public class GuiRestoreBackup extends GuiScreen {
 		drawCenteredString(fontRenderer, I18n.format("gui.backups.title"), width / 2, 20, 0xFFFFFF);
 		drawString(fontRenderer, list.totalDirSize, width - 5 - fontRenderer.getStringWidth(list.totalDirSize), 20, 0xFFFFFF);
 		super.drawScreen(mouseX, mouseY, partialTicks);
+		
+		if (tooltipCounter >= 20) {
+			if (restoreButton.isMouseOver())
+				drawHoveringText(restoreTooltip, mouseX, mouseY);
+			else if (enterButton.isMouseOver())
+				drawHoveringText(enterBackupTooltip, mouseX, mouseY);
+		}
+	}
+	
+	@Override
+	public void updateScreen() {
+		if (restoreButton.isMouseOver() || enterButton.isMouseOver()) {
+			if (tooltipCounter < 20)
+				tooltipCounter++;
+		} else {
+			tooltipCounter = 0;
+		}
+		
+		super.updateScreen();
 	}
 	
 	@Override
@@ -111,6 +140,7 @@ public class GuiRestoreBackup extends GuiScreen {
 			mc.displayGuiScreen(new GuiYesNo(this, message1, message2, I18n.format("gui.backups.restore"), I18n.format("gui.cancel"), button.id));
 		} else if (button.id == 1) {
 			backup.setLabel(null);
+			backup.writeBackup();
 		} else if (button.id == 2) {
 			mc.displayGuiScreen(new GuiLabelBackup(this, backup));
 		} else if (button.id == 3) {
@@ -374,19 +404,30 @@ public class GuiRestoreBackup extends GuiScreen {
 				String reason = I18n.format(backup.reason != null ? backup.reason.tranKey : "backups.reason.unknown");
 				this.desc = reason + ", " + backup.mcVersion + " (";
 				
-				if (backup.iconData != null) {
-					iconLoc = new ResourceLocation(BackupsMod.modid, "backup/" + worldDir.getName() + "/" + backup.dir.getName() + "/icon");
-					
-					if (mc.getTextureManager().getTexture(iconLoc) == null)
-						try {
-							BufferedImage image = ImageHelper.fromCompressedBytes(backup.iconData, 64, 64);
+				ResourceLocation iconLoc = new ResourceLocation(BackupsMod.modid, "backup/" + worldDir.getName() + "/" + backup.dir.getName() + "/icon");
+				File iconFile = new File(backup.dir, "icon.png");
+				BufferedImage image = null;
+				
+				try {
+					if (iconFile.isFile()) {
+						image = ImageIO.read(iconFile);
+					} else {
+						File metadataFile = new File(backup.dir, "backupMetadata.dat");
+						
+						if (metadataFile.isFile()) {
+							NBTTagCompound tag = CompressedStreamTools.read(metadataFile);
 							
-							mc.getTextureManager().loadTexture(iconLoc, new DynamicTexture(image));
-						} catch (IOException ex) {
-							BackupsMod.logger.error("Unable to load icon for backup " + backup.time, ex);
-							
-							iconLoc = null;
+							if (tag.hasKey("Icon"))
+								image = ImageHelper.fromCompressedBytes(tag.getByteArray("Icon"), 64, 64);
 						}
+					}
+				} catch (IOException ex) {
+					BackupsMod.logger.error("Unable to load icon for backup " + backup.time, ex);
+				}
+				
+				if (image != null) {
+					mc.getTextureManager().loadTexture(iconLoc, new DynamicTexture(image));
+					this.iconLoc = iconLoc;
 				}
 			}
 			

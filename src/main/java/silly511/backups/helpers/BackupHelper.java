@@ -2,6 +2,7 @@ package silly511.backups.helpers;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -21,6 +22,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+
+import javax.imageio.ImageIO;
 
 import org.apache.commons.io.FileUtils;
 
@@ -79,8 +82,11 @@ public final class BackupHelper {
 		File finalBackupDir = new File(backupsDir, time.atZone(ZoneId.systemDefault()).format(dateFormat));
 		Files.move(currentBackup.toPath(), finalBackupDir.toPath());
 		
-		Backup backup = new Backup(FileHelper.normalize(finalBackupDir), FORMAT_VERSION, reason, time, ForgeVersion.mcVersion, iconFetcher != null ? ImageHelper.toCompressedBytes(iconFetcher.get()) : null, null);
+		Backup backup = new Backup(FileHelper.normalize(finalBackupDir), FORMAT_VERSION, reason, time, ForgeVersion.mcVersion, null);
 		backup.writeBackup();
+		
+		if (iconFetcher != null)
+			ImageIO.write(iconFetcher.get(), "png", new File(finalBackupDir, "icon.png"));
 		
 		//Update last backup to newly created backup
 		setLastBackup(backupsDir, finalBackupDir);
@@ -131,7 +137,9 @@ public final class BackupHelper {
 			
 			boolean shouldDelete = false;
 			
-			if (secAgo >= Config.trimming.perWeek * 86400) //After 8+ days, trim to every week
+			if (Config.trimming.maxAge > 0 && secAgo >= Config.trimming.maxAge * 86400)
+				shouldDelete = true;
+			else if (secAgo >= Config.trimming.perWeek * 86400) //After 8+ days, trim to every week
 				shouldDelete = !set1.add((day + 3) / 7);
 			else if (secAgo >= Config.trimming.perDay * 86400) //After 1-7 days, trim to every day
 				shouldDelete = !set2.add(day);
@@ -166,7 +174,10 @@ public final class BackupHelper {
 		File last = new File(backupsDir, "Last");
 		
 		if (Files.isSymbolicLink(last.toPath())) last.delete();
-		FileUtils.write(last, newLastBackup.getName(), StandardCharsets.UTF_8);
+		
+		try (OutputStream out = new FileOutputStream(last)) {
+			out.write(newLastBackup.getName().getBytes(StandardCharsets.UTF_8));
+		}
 	}
 	
 	public static File getLastBackup(File backupsDir) throws IOException {
@@ -195,7 +206,6 @@ public final class BackupHelper {
 		public final BackupReason reason;
 		public final Instant time;
 		public final String mcVersion;
-		public final byte[] iconData;
 		protected String label;
 		
 		private static final Map<File, Backup> cache = new HashMap<>();
@@ -211,28 +221,26 @@ public final class BackupHelper {
 				NBTTagCompound tag = CompressedStreamTools.read(metadataFile);
 				BackupReason reason = BackupReason.values()[tag.getByte("Reason")];
 				Instant time = Instant.ofEpochSecond(tag.getLong("Time"));
-				byte[] iconData = tag.hasKey("Icon", 7) ? tag.getByteArray("Icon") : null;
 				String label = tag.hasKey("Label", 8) ? tag.getString("Label") : null;
 				
-				return new Backup(backupDir, tag.getInteger("Format"), reason, time, tag.getString("mcVersion"), iconData, label);
+				return new Backup(backupDir, tag.getInteger("Format"), reason, time, tag.getString("mcVersion"), label);
 			} catch (IOException | IndexOutOfBoundsException ex) {
-				return new Backup(backupDir, FORMAT_VERSION, null, FileHelper.getDateCreated(backupDir), null, null, null);
+				return new Backup(backupDir, FORMAT_VERSION, null, FileHelper.getDateCreated(backupDir), null, null);
 			}
 		}
 
-		protected Backup(File dir, int format, BackupReason reason, Instant time, String mcVersion, byte[] iconData, String label) {
+		protected Backup(File dir, int format, BackupReason reason, Instant time, String mcVersion, String label) {
 			this.dir = dir;
 			this.format = format;
 			this.reason = reason;
 			this.time = time;
 			this.mcVersion = mcVersion;
-			this.iconData = iconData;
 			this.label = label;
 			
 			cache.put(this.dir, this);
 		}
 		
-		protected void writeBackup() throws IOException {
+		public void writeBackup() throws IOException {
 			NBTTagCompound tag = new NBTTagCompound();
 			
 			tag.setInteger("Format", format);
@@ -240,16 +248,13 @@ public final class BackupHelper {
 			tag.setLong("Time", time.getEpochSecond());
 			tag.setString("mcVersion", mcVersion);
 			
-			if (iconData != null) tag.setByteArray("Icon", iconData);
 			if (label != null) tag.setString("Label", label);
 			
 			CompressedStreamTools.write(tag, new File(dir, "backupMetadata.dat"));
 		}
 		
-		public void setLabel(String label) throws IOException {
+		public void setLabel(String label) {
 			this.label = label;
-			
-			writeBackup();
 		}
 		
 		public String getLabel() {

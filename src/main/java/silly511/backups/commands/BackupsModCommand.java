@@ -12,6 +12,8 @@ import net.minecraft.command.ICommandSender;
 import net.minecraft.command.WrongUsageException;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
+import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.minecraftforge.fml.relauncher.Side;
 
 public class BackupsModCommand extends CommandBase {
 	
@@ -23,8 +25,13 @@ public class BackupsModCommand extends CommandBase {
 		builder.add(new RestoreCommand());
 		builder.add(new BackupCommand());
 		builder.add(new LastBackupCommand());
-		builder.add(new ServerRestoreCommand());
 		builder.add(new ListBackupsCommand());
+		
+		if (FMLCommonHandler.instance().getSide() == Side.SERVER) {
+			builder.add(new RestoreWorldCommandServer());
+		} else {
+			builder.add(new RestoreWorldCommandClient());
+		}
 		
 		subCommands = builder.build();
 		nameArray = new String[subCommands.size()];

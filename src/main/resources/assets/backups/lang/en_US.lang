@@ -1,3 +1,5 @@
+#PARSE_ESCAPES
+
 backups.temp_world_warning=Since you are inside a backup, no changes will be saved
 
 backups.reason.unknown=Unknown
@@ -6,6 +8,7 @@ backups.reason.user=User Initiated
 backups.reason.restore=Restore
 backups.reason.world_join=World Start
 
+gui.backups.backupsbutton.tooltip=Hold shift to use the recreate button
 gui.backups.title=Backups
 gui.backups.calculating=Calculating
 gui.backups.restore=Restore
@@ -13,6 +16,8 @@ gui.backups.clearLabel=Clear Label
 gui.backups.setLabel=Set Label
 gui.backups.enter=Enter backup
 gui.backups.delete=Delete
+gui.backups.restore.tooltip=Creates a backup of the world, then\nrestores it to the selected backup.
+gui.backups.enter.tooltip=Loads the backup like it is a world.\nAny changes made won't be saved.
 gui.backups.confirmDelete=Are you sure you want to delete %s backup(s)?
 gui.backups.confirmRestore1=Are you sure you want to restore %s to %s?
 gui.backups.confirmRestore2=A backup of the world will be made of before it is restored.
@@ -44,7 +49,7 @@ commands.backups.restore.area.success=Restored %s blocks from %s
 commands.backups.restore.player.usage=/backupsmod restore player <player> <backup>
 commands.backups.restore.player.success=Restored the inventory of %s to %s
 
-commands.backups.serverrestore.usage=/backupsmod serverrestore <backup>
+commands.backups.restoreworld.usage=/backupsmod restoreworld <backup>
 
 backups.misc.today=Today
 backups.misc.yesterday=Yesterday

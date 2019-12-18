@@ -17,7 +17,6 @@ import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.MinecraftException;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
-import net.minecraft.world.storage.WorldInfo;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.fml.common.FMLCommonHandler;
@@ -37,24 +36,28 @@ import silly511.backups.helpers.ImageHelper;
 @EventBusSubscriber(modid = BackupsMod.modid)
 public class BackupManager {
 	
-	private static WorldInfo worldInfo;
+	private static BackupsWorldCapability worldCapability;
 	private static boolean shouldBackup;
 	private volatile static BackupThread thread;
 	private static Int2BooleanMap oldSaveStates;
 	
 	public static void serverStarted() {
-		worldInfo = null;
+		worldCapability = null;
 		shouldBackup = Config.backupInterval > 0 && !isTempWorld();
 	}
 	
 	@SubscribeEvent
 	public static void serverTick(TickEvent.ServerTickEvent event) {
-		if (worldInfo == null) {
+		PlayerList playerList = FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList();
+		
+		if (worldCapability == null) {
 			World overworld = DimensionManager.getWorld(0);
 			
 			if (overworld != null)
-				worldInfo = overworld.getWorldInfo();
-		} else if (shouldBackup && thread == null && worldInfo.getWorldTotalTime() % (Config.backupInterval * (60 * 20)) == 0) {
+				worldCapability = overworld.getCapability(BackupsWorldCapability.capability, null);
+		} else if (shouldBackup && thread == null && worldCapability.nextBackupTimer >= (Config.backupInterval * (60 * 20)) &&
+				(Config.backupWhenServerEmpty || playerList.getPlayers().size() > 0)) {
+			worldCapability.nextBackupTimer = 0;
 			startBackup(BackupReason.SCHEDULED, null);
 		}
 		
@@ -68,6 +71,8 @@ public class BackupManager {
 			
 			thread = null;
 		}
+		
+		worldCapability.nextBackupTimer++;
 	}
 	
 	@SubscribeEvent
@@ -194,7 +199,11 @@ public class BackupManager {
 					BackupHelper.trimBackups(backupsDir);
 				
 				Backup backup = BackupHelper.backup(worldDir, backupsDir, reason, isClient ? () -> fetchIcon() : null);
-				if (label != null) backup.setLabel(label);
+				
+				if (label != null) {
+					backup.setLabel(label);
+					backup.writeBackup();
+				}
 				
 				BackupsMod.logger.info("Finished backup");
 			} catch (Exception ex) {

@@ -22,7 +22,7 @@ public class BackupCommand extends CommandBase {
 	
 	@Override
 	public int getRequiredPermissionLevel() {
-		return Config.needOpToBackup ? 2 : 0;
+		return Config.needOpToBackup ? 4 : 0;
 	}
 	
 	@Override

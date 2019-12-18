@@ -29,18 +29,21 @@ import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLServerStartedEvent;
 import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
 import net.minecraftforge.fml.common.event.FMLServerStoppedEvent;
+import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent.Phase;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import silly511.backups.commands.BackupsModCommand;
-import silly511.backups.commands.ServerRestoreCommand;
+import silly511.backups.commands.RestoreWorldCommandClient;
 import silly511.backups.gui.BackupsButton;
 import silly511.backups.gui.BackupsButtonFallback;
 import silly511.backups.gui.BackupsOnlyWorldEntry;
 import silly511.backups.helpers.FileHelper;
 
 @EventBusSubscriber
-@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.4.9", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
+@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.5.0", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
 public class BackupsMod {
 	
 	public static final String modid = "backups";
@@ -50,6 +53,8 @@ public class BackupsMod {
 	@EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
 		logger = event.getModLog();
+		
+		BackupsWorldCapability.register();
 	}
 	
 	@EventHandler
@@ -62,7 +67,9 @@ public class BackupsMod {
 			try {
 				if (versionFile.isFile())
 					version = Integer.parseInt(FileUtils.readFileToString(versionFile, StandardCharsets.UTF_8));
-			} catch (IOException | NumberFormatException ex) {}
+			} catch (IOException | NumberFormatException ex) {
+				
+			}
 			
 			if (version <= 0 && backupsDir.exists()) {
 				backupsDir.renameTo(new File("backups_oldformat"));
@@ -101,11 +108,9 @@ public class BackupsMod {
 				logger.error("Unable to delete temp worlds", ex);
 			}
 		}
-		
-		ServerRestoreCommand.onServerShutdown();
 	}
 	
-	@SubscribeEvent
+	@SubscribeEvent(priority = EventPriority.LOW)
 	@SideOnly(Side.CLIENT)
 	public static void onGuiInit(GuiScreenEvent.InitGuiEvent.Post event) {
 		String className = event.getGui().getClass().getName();
@@ -114,7 +119,8 @@ public class BackupsMod {
 			GuiWorldSelection gui = (GuiWorldSelection) event.getGui();
 			Minecraft mc = Minecraft.getMinecraft();
 			
-			event.getButtonList().replaceAll(button -> button == gui.copyButton ? gui.copyButton = new BackupsButton(button, gui) : button);
+			if (event.getButtonList().remove(gui.copyButton))
+				event.getButtonList().add(gui.copyButton = new BackupsButton(gui.copyButton, gui));
 			
 			if (Config.showDeletedWorlds) {
 				File savesDir = new File("saves");
@@ -142,6 +148,12 @@ public class BackupsMod {
 		} else if (className.equals("com.pg85.otg.forge.gui.OTGGuiWorldSelection") || className.equals("com.pg85.otg.forge.gui.mainmenu.OTGGuiWorldSelection")) {
 			event.getButtonList().add(new BackupsButtonFallback(event.getGui()));
 		}
+	}
+	
+	@SubscribeEvent
+	public static void onClientTick(ClientTickEvent event) {
+		if (event.phase == Phase.START)
+			RestoreWorldCommandClient.onPreClientTick();
 	}
 	
 	@SubscribeEvent
