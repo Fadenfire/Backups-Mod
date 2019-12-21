@@ -48,6 +48,10 @@ public class Config {
 		@Comment("Number of days old a backup has to be before it's deleted. Set to zero to keep backups forever")
 		@RangeInt(min = 0)
 		public int maxAge = 0;
+		
+		@Comment("Maximum number of backups to keep. Once the number of backups exceeds this number the oldest ones are deleted. Set to zero to disable.")
+		@RangeInt(min = 0)
+		public int maxNumber = 0;
 	}
 	
 	public static enum AnnounceBackupsMode {

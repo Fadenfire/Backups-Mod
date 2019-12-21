@@ -49,7 +49,7 @@ public final class BackupHelper {
 		public final String tranKey = "backups.reason." + name().toLowerCase();
 	}
 	
-	public static final DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("d-M-yyyy h-mm-ss a");
+	public static final DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-M-d k-mm-ss");
 	public static final int FORMAT_VERSION = 1;
 	
 	public static Backup backup(File sourceDir, File backupsDir, BackupReason reason, Supplier<BufferedImage> iconFetcher) throws IOException {
@@ -127,6 +127,7 @@ public final class BackupHelper {
 		
 		ZoneId timeZone = ZoneId.systemDefault();
 		long currentSec = Instant.now().getEpochSecond();
+		int i = 0;
 		
 		for (Backup backup : listAllBackups(backupsDir)) {
 			if (backup.label != null) continue;
@@ -136,8 +137,11 @@ public final class BackupHelper {
 			long secAgo = currentSec - sec;
 			
 			boolean shouldDelete = false;
+			i++;
 			
-			if (Config.trimming.maxAge > 0 && secAgo >= Config.trimming.maxAge * 86400)
+			if (Config.trimming.maxNumber > 0 && i > Config.trimming.maxNumber)
+				shouldDelete = true;
+			else if (Config.trimming.maxAge > 0 && secAgo >= Config.trimming.maxAge * 86400)
 				shouldDelete = true;
 			else if (secAgo >= Config.trimming.perWeek * 86400) //After 8+ days, trim to every week
 				shouldDelete = !set1.add((day + 3) / 7);

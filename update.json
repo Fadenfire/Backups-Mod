@@ -2,7 +2,7 @@
   "homepage": "https://www.curseforge.com/minecraft/mc-mods/backups",
   "promos": {
     "1.8.9-recommended": "1.4.1",
-    "1.12.2-recommended": "1.4.9"
+    "1.12.2-recommended": "1.5.1"
   },
   
   "1.8.9": {
@@ -23,6 +23,8 @@
     "1.4.4": "Fixed conflict with Open Terrain Generator mod.",
     "1.4.5": "Removed buggy backup update code.\nBundled all commands into one command to be more compatible with other mods like world edit.",
     "1.4.8": "Added listbackups and serverrestore commands.\nAdded config option for backups at world start.",
-    "1.4.9": "The time between backups is now saved with the world."
+    "1.4.9": "The time between backups is now saved with the world.",
+    "1.5.0": "Added restore world command to restore the entire world.\nAdded config option for setting a max age for backups.\nAdded tooltips to the backups GUI.",
+    "1.5.1": "Added config option for maximum number of backups."
   }
 }
