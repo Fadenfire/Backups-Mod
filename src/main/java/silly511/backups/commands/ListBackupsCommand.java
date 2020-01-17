@@ -39,7 +39,7 @@ public class ListBackupsCommand extends CommandBase {
 		if (backups.isEmpty()) throw new CommandException("commands.backups.lastbackup.noBackups");
 		
 		for (Backup backup : Lists.reverse(backups)) {
-			String formattedTime = backup.time.atZone(ZoneId.systemDefault()).format(FormatHelper.dateTimeFormat);
+			String formattedTime = backup.time.atZone(ZoneId.systemDefault()).format(RestoreCommand.dateFormat);
 			ITextComponent msg = new TextComponentString(formattedTime + " (" + FormatHelper.relativeTimeAgo(backup.time) + " ago)");
 						
 			sender.sendMessage(msg);

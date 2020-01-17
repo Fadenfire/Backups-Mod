@@ -94,15 +94,15 @@ public final class BackupHelper {
 		return backup;
 	}
 	
-	public static void restoreBackup(File backupDir, File targetDir, Predicate<String> filter) throws IOException {
-		Files.createDirectories(targetDir.toPath());
-		FileHelper.cleanDirectory(targetDir);
+	public static void restoreBackup(File backupDir, File targetDir, File tempDir, Predicate<String> filter) throws IOException {
+		Files.createDirectories(tempDir.toPath());
+		File tempRestoreDir = Files.createTempDirectory(tempDir.toPath(), "backupRestore").toFile();
 		
 		List<IORunnable> attributeCopyTasks = new LinkedList<>();
 		
 		for (File file : FileHelper.listFiles(backupDir, false)) {
 			Path backupFile = file.toPath();
-			Path targetFile = FileHelper.relativizeRemove(backupDir, file, targetDir, ".gz");
+			Path targetFile = FileHelper.relativizeRemove(backupDir, file, tempRestoreDir, ".gz");
 			
 			if (Files.isDirectory(backupFile))
 				Files.createDirectory(targetFile);
@@ -118,6 +118,15 @@ public final class BackupHelper {
 		}
 		
 		for (IORunnable t : attributeCopyTasks) t.run();
+		
+		File oldTargetDir = new File(tempDir, "BackupsModOldWorldTemp");
+		
+		if (oldTargetDir.isDirectory()) FileHelper.deleteDirectory(oldTargetDir);
+		if (targetDir.isDirectory()) targetDir.renameTo(oldTargetDir);
+		
+		tempRestoreDir.renameTo(targetDir);
+		
+		FileHelper.deleteDirectory(oldTargetDir);
 	}
 	
 	public static void trimBackups(File backupsDir) {

@@ -48,6 +48,7 @@ public class RestoreWorldCommandServer extends CommandBase {
 		
 		File worldDir = DimensionManager.getCurrentSaveRootDirectory();
 		Backup backup = RestoreCommand.parseBackup(args[0]);
+		File tempDir = new File(server.getDataDirectory(), "temp");
 		
 		//I really don't like this, but it works and the alternative is ASM so I'm keeping it for now
 		try {
@@ -75,7 +76,7 @@ public class RestoreWorldCommandServer extends CommandBase {
 					try {
 						System.out.println("[Backups]: Restoring backup");
 						
-						BackupHelper.restoreBackup(backup.dir, worldDir, null);
+						BackupHelper.restoreBackup(backup.dir, worldDir, tempDir, null);
 						BackupHelper.setLastBackup(backup.dir.getParentFile(), backup.dir);
 						
 						System.out.println("[Backups]: Backup restored, please restart server");

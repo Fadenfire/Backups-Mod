@@ -150,7 +150,7 @@ public class GuiRestoreBackup extends GuiScreen {
 				status.accept("gui.backups.loadingBackup");
 				
 				//Restore backup to temp dir, but without region files
-				BackupHelper.restoreBackup(backup.dir, tempWorldDir, f -> f.endsWith(".mca"));
+				BackupHelper.restoreBackup(backup.dir, tempWorldDir, new File("temp"), f -> f.endsWith(".mca"));
 			}, () -> {
 				//Add custom region file cache that will load region files from the backup
 				synchronized (RegionFileCache.class) {
@@ -186,7 +186,7 @@ public class GuiRestoreBackup extends GuiScreen {
 					}
 					
 					status.accept("gui.backups.restoring");
-					BackupHelper.restoreBackup(backup.dir, worldDir, null);
+					BackupHelper.restoreBackup(backup.dir, worldDir, new File("temp"), null);
 					BackupHelper.setLastBackup(backupsDir, backup.dir);
 				}));
 			} else if (id == 4) {

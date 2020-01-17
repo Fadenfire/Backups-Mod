@@ -61,7 +61,13 @@ public class RestoreWorldCommandClient extends CommandBase {
 			
 			mc.displayGuiScreen(new GuiRestoreTask(null, status -> {
 				status.accept("gui.backups.restoring");
-				BackupHelper.restoreBackup(backup.dir, worldDir, null);
+				
+				try {
+					//TODO: This might help with https://github.com/Silly511/Backups-Mod/issues/19, but it's also a race condition so it should be replaced with something else
+					Thread.sleep(2000);
+				} catch (InterruptedException ex) {}
+				
+				BackupHelper.restoreBackup(backup.dir, worldDir, new File("temp"), null);
 				BackupHelper.setLastBackup(backup.dir.getParentFile(), backup.dir);
 			}));
 		});
