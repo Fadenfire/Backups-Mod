@@ -18,7 +18,7 @@ goto :done
 :foundmod
 set modpath="mods\%modname%"
 
-if not %backupdir%=="" goto :backup
+if not %backupdir%=="" goto :restorebackup
 
 if exist backupsmod (
 	set mainbackupsdir=backupsmod
@@ -44,7 +44,7 @@ goto :done
 :foundbackup
 set backupdir="%mainbackupsdir%\%latestworld%\%latestsave%"
 
-:backup
+:restorebackup
 java -jar %modpath% %backupdir% %worlddir%
 
 if %errorlevel%==0 (
