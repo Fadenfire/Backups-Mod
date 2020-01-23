@@ -2,7 +2,7 @@
   "homepage": "https://www.curseforge.com/minecraft/mc-mods/backups",
   "promos": {
     "1.8.9-recommended": "1.4.1",
-    "1.12.2-recommended": "1.5.2"
+    "1.12.2-recommended": "1.5.3"
   },
   
   "1.8.9": {
@@ -26,6 +26,7 @@
     "1.4.9": "The time between backups is now saved with the world.",
     "1.5.0": "Added restore world command to restore the entire world.\nAdded config option for setting a max age for backups.\nAdded tooltips to the backups GUI.",
     "1.5.1": "Added config option for maximum number of backups.",
-    "1.5.2": "Made restoring more error resistant."
+    "1.5.2": "Made restoring more error resistant.",
+    "1.5.3": "Fixed a bug where restoring a backup would fail if the world dir didn't exist."
   }
 }

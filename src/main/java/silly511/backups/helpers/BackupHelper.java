@@ -126,7 +126,7 @@ public final class BackupHelper {
 		
 		tempRestoreDir.renameTo(targetDir);
 		
-		FileHelper.deleteDirectory(oldTargetDir);
+		if (oldTargetDir.isDirectory()) FileHelper.deleteDirectory(oldTargetDir);
 	}
 	
 	public static void trimBackups(File backupsDir) {
