@@ -1,10 +1,10 @@
 @ECHO OFF
 
 :: Optional - edit the restored world name ::
-set worlddir=RestoredWorld
+set worlddir="RestoredWorld"
 
 :: Optional - manually select backup folder (default is latest) ::
-set backupdir=
+set backupdir=""
 
 :: Don't edit past this point ::
 for /f "tokens=*" %%f in (
@@ -16,28 +16,39 @@ for /f "tokens=*" %%f in (
 echo Backups mod was not found
 goto :done
 :foundmod
-set modpath=mods\%modname%
+set modpath="mods\%modname%"
 
-if [%backupdir%]==[] (
-	for /f "tokens=*" %%a in (
-		'dir /b /ad-h /t:c /o-d "backups"'
-	) do for /f "tokens=*" %%b in (
-			'dir /b /ad-h /t:c /o-d "backups\%%a"'
-		) do (
-			set latestworld=%%a
-			set latestsave=%%b
-			goto :foundbackup 
-		)
-	echo No backups were found
+if not %backupdir%=="" goto :restorebackup
+
+if exist backupsmod (
+	set mainbackupsdir=backupsmod
+) else if exist backups (
+	set mainbackupsdir=backups
+) else (
+	echo No backups were found 
 	goto :done
-	:foundbackup
-	set backupdir=backups\%latestworld%\%latestsave%
 )
 
-java -jar "%modpath%" "%backupdir%" "%worlddir%"
+for /f "tokens=*" %%a in (
+	'dir /b /ad-h /t:c /o-d "%mainbackupsdir%"'
+) do for /f "tokens=*" %%b in (
+		'dir /b /ad-h /t:c /o-d "%mainbackupsdir%\%%a"'
+	) do (
+		set latestworld=%%a
+		set latestsave=%%b
+		goto :foundbackup 
+	)
+echo No backups were found
+goto :done
+
+:foundbackup
+set backupdir="%mainbackupsdir%\%latestworld%\%latestsave%"
+
+:restorebackup
+java -jar %modpath% %backupdir% %worlddir%
 
 if %errorlevel%==0 (
-	echo World backup successfully restored to %worlddir%!
+	echo World backup successfully restored to %worlddir% from %backupdir%
 )
 
 :done
