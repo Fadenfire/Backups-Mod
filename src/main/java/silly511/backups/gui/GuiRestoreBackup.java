@@ -108,7 +108,7 @@ public class GuiRestoreBackup extends GuiScreen {
 		drawString(fontRenderer, list.totalDirSize, width - 5 - fontRenderer.getStringWidth(list.totalDirSize), 20, 0xFFFFFF);
 		super.drawScreen(mouseX, mouseY, partialTicks);
 		
-		if (tooltipCounter >= 20) {
+		if (tooltipCounter >= 10) {
 			if (restoreButton.isMouseOver())
 				drawHoveringText(restoreTooltip, mouseX, mouseY);
 			else if (enterButton.isMouseOver())

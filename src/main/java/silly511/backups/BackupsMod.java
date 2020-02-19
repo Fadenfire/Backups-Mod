@@ -43,7 +43,7 @@ import silly511.backups.gui.BackupsOnlyWorldEntry;
 import silly511.backups.helpers.FileHelper;
 
 @EventBusSubscriber
-@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.5.3", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
+@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.5.4", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
 public class BackupsMod {
 	
 	public static final String modid = "backups";
