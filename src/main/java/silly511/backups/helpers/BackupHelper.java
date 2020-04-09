@@ -196,7 +196,14 @@ public final class BackupHelper {
 	public static File getLastBackup(File backupsDir) throws IOException {
 		File last = new File(backupsDir, "Last");
 		
-		return last.isFile() ? new File(backupsDir, FileUtils.readFileToString(last, StandardCharsets.UTF_8)) : last;
+		if (last.isFile()) {
+			File readDir = new File(backupsDir, FileUtils.readFileToString(last, StandardCharsets.UTF_8));
+			
+			if (readDir.isDirectory())
+				return readDir;
+		}
+		
+		return last;
 	}
 	
 	public static List<Backup> listAllBackups(File backupsDir) {

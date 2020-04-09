@@ -27,7 +27,7 @@ public class BackupCommand extends CommandBase {
 	
 	@Override
 	public boolean checkPermission(MinecraftServer server, ICommandSender sender) {
-		return server.isSinglePlayer() || super.checkPermission(server, sender);
+		return !Config.needOpToBackup || super.checkPermission(server, sender);
 	}
 
 	@Override

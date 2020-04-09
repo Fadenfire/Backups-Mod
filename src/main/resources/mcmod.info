@@ -2,7 +2,7 @@
 	"modid": "backups",
 	"name": "Backups",
 	"description": "Makes backups.",
-	"version": "1.5.4",
+	"version": "1.5.5",
 	"mcversion": "${mcversion}",
 	"authorList": ["Silly511"]
 }]

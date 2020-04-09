@@ -17,7 +17,7 @@ public class Config {
 	@Comment("If a world is deleted but still has backups, then an entry for the world will still be shown in the world selection list")
 	public static boolean showDeletedWorlds = true;
 	
-	@Comment("If you need to be an op to use /backup. If this is false then any player can use /backup")
+	@Comment("If you need to be an op to use /backupsmod backup. If this is false then any player can use /backupsmod backup")
 	public static boolean needOpToBackup = true;
 	
 	@Comment("If backups should still happen when there are no player online")
