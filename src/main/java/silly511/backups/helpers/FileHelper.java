@@ -2,7 +2,6 @@ package silly511.backups.helpers;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -13,68 +12,70 @@ import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.Deflater;
-
-import org.apache.commons.io.FilenameUtils;
 
 public final class FileHelper {
 	
-	public static List<File> listFiles(File dir, boolean includeSelf) {
-		File[] files = dir.listFiles();
-		if (files == null) throw new IllegalArgumentException("File must be a directory");
-		
-		List<File> list = new LinkedList<>();
+	public static List<Path> listFiles(Path dir) throws IOException {
+		try (Stream<Path> files = Files.list(dir)) {
+			return files.collect(Collectors.toList());
+		}
+	}
+	
+	public static List<Path> listFilesDeep(Path dir, boolean includeSelf) throws IOException {
+		List<Path> list = new LinkedList<>();
 		if (includeSelf) list.add(dir);
 		
-		for (File file : files)
-			if (Files.isDirectory(file.toPath(), LinkOption.NOFOLLOW_LINKS))
-				list.addAll(listFiles(file, true));
+		for (Path path : listFiles(dir))
+			if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS))
+				list.addAll(listFilesDeep(path, true));
 			else
-				list.add(file);
+				list.add(path);
 		
 		return list;
 	}
 	
-	public static void cleanDirectory(File dir) throws IOException {
-		File[] files = dir.listFiles();
-		if (files == null) throw new IllegalArgumentException("File must be a directory");
-		
-		for (File file : files)
-			if (Files.isDirectory(file.toPath(), LinkOption.NOFOLLOW_LINKS))
-				deleteDirectory(file);
-			else
-				Files.delete(file.toPath());
+	public static void cleanDirectory(Path dir) throws IOException {
+		try (Stream<Path> files = Files.list(dir)) {
+			for (Path path : files.collect(Collectors.toList()))
+				if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS))
+					deleteDirectory(path);
+				else
+					Files.delete(path);
+		}
 	}
 	
-	public static void deleteDirectory(File dir) throws IOException {
+	public static void deleteDirectory(Path dir) throws IOException {
 		cleanDirectory(dir);
 		
-		Files.delete(dir.toPath());
+		Files.delete(dir);
 	}
 	
-	public static File normalize(File file) {
-		return new File(FilenameUtils.normalize(file.getAbsolutePath()));
+	public static void deleteIfExists(Path path) throws IOException {
+		if (Files.exists(path, LinkOption.NOFOLLOW_LINKS))
+			if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS))
+				deleteDirectory(path);
+			else
+				Files.delete(path);
 	}
 	
-	public static Path relativize(File fileParent, File file, File newParent) {
-		return newParent.toPath().resolve(fileParent.toPath().relativize(file.toPath()));
+	public static Path relativize(Path oldParent, Path path, Path newParent) {
+		return newParent.resolve(oldParent.relativize(path));
 	}
 	
-	public static Path relativizeAdd(File fileParent, File file, File newParent, String extension) {
-		return newParent.toPath().resolve(fileParent.toPath().relativize(file.toPath()) + extension);
+	public static Path relativizeAdd(Path oldParent, Path path, Path newParent, String extension) {
+		return newParent.resolve(oldParent.relativize(path) + extension);
 	}
 	
-	public static Path relativizeRemove(File fileParent, File file, File newParent, String extension) {
-		return newParent.toPath().resolve(FormatHelper.removeEnd(fileParent.toPath().relativize(file.toPath()).toString(), extension));
+	public static Path relativizeRemove(Path oldParent, Path path, Path newParent, String extension) {
+		return newParent.resolve(FormatHelper.removeEnd(oldParent.relativize(path).toString(), extension));
 	}
 	
-	public static boolean equals(File f1, File f2) {
-		return FilenameUtils.normalize(f1.getAbsolutePath()).equals(FilenameUtils.normalize(f2.getAbsolutePath()));
-	}
-	
-	public static Instant getDateCreated(File file) {
+	public static Instant getDateCreated(Path path) {
 		try {
-			BasicFileAttributes attribs = Files.readAttributes(file.toPath(), BasicFileAttributes.class);
+			BasicFileAttributes attribs = Files.readAttributes(path, BasicFileAttributes.class);
 			
 			return attribs.creationTime().toInstant();
 		} catch (IOException ex) {
@@ -82,16 +83,13 @@ public final class FileHelper {
 		}
 	}
 	
-	public static FileTime readGzipTime(Path file) throws IOException {
-		try (DataInputStream in = new DataInputStream(new BufferedInputStream(Files.newInputStream(file), 64))) {
+	public static FileTime readGzipTime(Path path) throws IOException {
+		try (DataInputStream in = new DataInputStream(new BufferedInputStream(Files.newInputStream(path), 64))) {
 			if (in.read() != 0x1F || in.read() != 0x8B) return null;
 			if (in.readUnsignedByte() != Deflater.DEFLATED) return null;
 			in.skip(1);
 			
 			return FileTime.from(Integer.reverseBytes(in.readInt()), TimeUnit.SECONDS);
-		} catch (IOException ex) {
-			System.out.println(file);
-			throw ex;
 		}
 	}
 

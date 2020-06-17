@@ -18,7 +18,7 @@ public class CommandLineRestore {
 		
 		System.out.println("Restoring...");
 		
-		BackupHelper.restoreBackup(backupDir, worldDir, worldDir.getParentFile(), null);
+		BackupHelper.restoreBackup(backupDir.toPath(), worldDir.toPath(), worldDir.toPath().getParent(), null);
 		//BackupHelper.setLastBackup(backupDir.getParentFile(), backupDir);
 	}
 	

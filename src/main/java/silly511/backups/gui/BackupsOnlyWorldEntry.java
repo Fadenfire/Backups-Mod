@@ -1,6 +1,6 @@
 package silly511.backups.gui;
 
-import java.io.File;
+import java.nio.file.Paths;
 import java.time.ZoneId;
 
 import net.minecraft.client.Minecraft;
@@ -25,7 +25,7 @@ public class BackupsOnlyWorldEntry extends GuiListWorldSelectionEntry {
 	public BackupsOnlyWorldEntry(String worldName, GuiListWorldSelection worldList, ISaveFormat saveFormat) {
 		super(worldList, createWorldSummary(worldName), saveFormat);
 		this.worldList = worldList;
-		this.latestBackup = BackupHelper.listAllBackups(new File(Config.backupsDir, worldName)).get(0);
+		this.latestBackup = BackupHelper.listAllBackups(Paths.get(Config.backupsDir, worldName)).get(0);
 	}
 	
 	private static WorldSummary createWorldSummary(String worldName) {

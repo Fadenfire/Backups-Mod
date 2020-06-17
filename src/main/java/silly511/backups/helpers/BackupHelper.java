@@ -1,8 +1,6 @@
 package silly511.backups.helpers;
 
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -24,8 +22,6 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import javax.imageio.ImageIO;
-
-import org.apache.commons.io.FileUtils;
 
 import com.google.common.collect.ImmutableList;
 
@@ -52,22 +48,21 @@ public final class BackupHelper {
 	public static final DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-M-d k-mm-ss");
 	public static final int FORMAT_VERSION = 1;
 	
-	public static Backup backup(File sourceDir, File backupsDir, BackupReason reason, Supplier<BufferedImage> iconFetcher) throws IOException {
-		File currentBackup = new File(backupsDir, "In-Progress");
-		File lastBackup = getLastBackup(backupsDir);
+	public static Backup backup(Path sourceDir, Path backupsDir, BackupReason reason, Supplier<BufferedImage> iconFetcher) throws IOException {
+		Path currentBackup = backupsDir.resolve("In-Progress");
+		Path lastBackup = getLastBackup(backupsDir);
 		Instant time = Instant.now();
 		
-		Files.createDirectories(currentBackup.toPath());
+		Files.createDirectories(currentBackup);
 		FileHelper.cleanDirectory(currentBackup);
 				
-		for (File file : FileHelper.listFiles(sourceDir, false)) {
-			Path sourceFile = file.toPath();
-			Path currentFile = FileHelper.relativize(sourceDir, file, currentBackup); //File inside current backup
+		for (Path sourceFile : FileHelper.listFilesDeep(sourceDir, false)) {
+			Path currentFile = FileHelper.relativize(sourceDir, sourceFile, currentBackup); //File inside current backup
 			
 			if (Files.isDirectory(sourceFile, LinkOption.NOFOLLOW_LINKS))
 				Files.createDirectory(currentFile);
 			else if (Files.isRegularFile(sourceFile, LinkOption.NOFOLLOW_LINKS)) {
-				Path lastFile = FileHelper.relativizeAdd(sourceDir, file, lastBackup, ".gz"); //File inside last backup
+				Path lastFile = FileHelper.relativizeAdd(sourceDir, sourceFile, lastBackup, ".gz"); //File inside last backup
 				currentFile = currentFile.resolveSibling(currentFile.getFileName() + ".gz");
 				
 				if (Files.isRegularFile(lastFile, LinkOption.NOFOLLOW_LINKS) && Files.getLastModifiedTime(sourceFile).equals(FileHelper.readGzipTime(lastFile)))
@@ -79,14 +74,14 @@ public final class BackupHelper {
 			}
 		}
 		
-		File finalBackupDir = new File(backupsDir, time.atZone(ZoneId.systemDefault()).format(dateFormat));
-		Files.move(currentBackup.toPath(), finalBackupDir.toPath());
+		Path finalBackupDir = backupsDir.resolve(time.atZone(ZoneId.systemDefault()).format(dateFormat));
+		Files.move(currentBackup, finalBackupDir);
 		
-		Backup backup = new Backup(FileHelper.normalize(finalBackupDir), FORMAT_VERSION, reason, time, ForgeVersion.mcVersion, null);
+		Backup backup = new Backup(finalBackupDir.toAbsolutePath().normalize(), FORMAT_VERSION, reason, time, ForgeVersion.mcVersion, null);
 		backup.writeBackup();
 		
 		if (iconFetcher != null)
-			ImageIO.write(iconFetcher.get(), "png", new File(finalBackupDir, "icon.png"));
+			ImageIO.write(iconFetcher.get(), "png", finalBackupDir.resolve("icon.png").toFile());
 		
 		//Update last backup to newly created backup
 		setLastBackup(backupsDir, finalBackupDir);
@@ -94,42 +89,46 @@ public final class BackupHelper {
 		return backup;
 	}
 	
-	public static void restoreBackup(File backupDir, File targetDir, File tempDir, Predicate<String> filter) throws IOException {
-		Files.createDirectories(tempDir.toPath());
-		File tempRestoreDir = Files.createTempDirectory(tempDir.toPath(), "backupRestore").toFile();
+	public static void restoreBackup(Path backupDir, Path targetDir, Path tempDir, Predicate<String> filter) throws IOException {
+		Files.createDirectories(tempDir);
+		Path tempRestoreDir = Files.createTempDirectory(tempDir, "backupRestore");
 		
-		List<IORunnable> attributeCopyTasks = new LinkedList<>();
-		
-		for (File file : FileHelper.listFiles(backupDir, false)) {
-			Path backupFile = file.toPath();
-			Path targetFile = FileHelper.relativizeRemove(backupDir, file, tempRestoreDir, ".gz");
+		try {
+			List<IORunnable> attributeCopyTasks = new LinkedList<>();
 			
-			if (Files.isDirectory(backupFile))
-				Files.createDirectory(targetFile);
-			else if (Files.isRegularFile(backupFile, LinkOption.NOFOLLOW_LINKS) && file.getPath().endsWith(".gz")) {
-				if (filter != null && filter.test(targetFile.getFileName().toString())) continue;
+			for (Path backupFile : FileHelper.listFilesDeep(backupDir, false)) {
+				Path targetFile = FileHelper.relativizeRemove(backupDir, backupFile, tempRestoreDir, ".gz");
 				
-				try (GzipInputStream stream = new GzipInputStream(Files.newInputStream(backupFile), 8192)) {
-					Files.copy(stream, targetFile, StandardCopyOption.REPLACE_EXISTING);
+				if (Files.isDirectory(backupFile))
+					Files.createDirectory(targetFile);
+				else if (Files.isRegularFile(backupFile, LinkOption.NOFOLLOW_LINKS) && backupFile.toString().endsWith(".gz")) {
+					if (filter != null && filter.test(targetFile.getFileName().toString())) continue;
 					
-					attributeCopyTasks.add(() -> Files.setLastModifiedTime(targetFile, stream.getModTime()));
+					try (GzipInputStream stream = new GzipInputStream(Files.newInputStream(backupFile), 8192)) {
+						Files.copy(stream, targetFile, StandardCopyOption.REPLACE_EXISTING);
+						
+						attributeCopyTasks.add(() -> Files.setLastModifiedTime(targetFile, stream.getModTime()));
+					}
 				}
 			}
+			
+			for (IORunnable t : attributeCopyTasks) t.run();
+			
+			Path oldTargetDir = tempDir.resolve("BackupsModOldWorldTemp");
+			
+			FileHelper.deleteIfExists(oldTargetDir);
+			if (Files.exists(targetDir, LinkOption.NOFOLLOW_LINKS)) Files.move(targetDir, oldTargetDir);
+			
+			Files.createDirectories(targetDir.getParent());
+			Files.move(tempRestoreDir, targetDir);
+			
+			FileHelper.deleteIfExists(oldTargetDir);
+		} finally {
+			FileHelper.deleteIfExists(tempRestoreDir);
 		}
-		
-		for (IORunnable t : attributeCopyTasks) t.run();
-		
-		File oldTargetDir = new File(tempDir, "BackupsModOldWorldTemp");
-		
-		if (oldTargetDir.isDirectory()) FileHelper.deleteDirectory(oldTargetDir);
-		if (targetDir.isDirectory()) targetDir.renameTo(oldTargetDir);
-		
-		tempRestoreDir.renameTo(targetDir);
-		
-		if (oldTargetDir.isDirectory()) FileHelper.deleteDirectory(oldTargetDir);
 	}
 	
-	public static void trimBackups(File backupsDir) {
+	public static void trimBackups(Path backupsDir) throws IOException {
 		Set<Long> set1 = new HashSet<>();
 		Set<Long> set2 = new HashSet<>();
 		Set<Long> set3 = new HashSet<>();
@@ -170,7 +169,7 @@ public final class BackupHelper {
 	}
 	
 	public static void deleteBackup(Backup backup) throws IOException {
-		File backupsDir = backup.dir.getParentFile();
+		Path backupsDir = backup.dir.getParent();
 		
 		if (getLastBackup(backupsDir).equals(backup.dir)) {
 			List<Backup> backups = listAllBackups(backupsDir);
@@ -183,37 +182,38 @@ public final class BackupHelper {
 		FileHelper.deleteDirectory(backup.dir);
 	}
 	
-	public static void setLastBackup(File backupsDir, File newLastBackup) throws IOException {
-		File last = new File(backupsDir, "Last");
+	public static void setLastBackup(Path backupsDir, Path newLastBackup) throws IOException {
+		Path last = backupsDir.resolve("Last");
 		
-		if (Files.isSymbolicLink(last.toPath())) last.delete();
+		if (Files.isSymbolicLink(last)) Files.delete(last);
 		
-		try (OutputStream out = new FileOutputStream(last)) {
-			out.write(newLastBackup.getName().getBytes(StandardCharsets.UTF_8));
-		}
+		Files.write(last, newLastBackup.getFileName().toString().getBytes(StandardCharsets.UTF_8));
 	}
 	
-	public static File getLastBackup(File backupsDir) throws IOException {
-		File last = new File(backupsDir, "Last");
+	public static Path getLastBackup(Path backupsDir) throws IOException {
+		Path last = backupsDir.resolve("Last");
 		
-		if (last.isFile()) {
-			File readDir = new File(backupsDir, FileUtils.readFileToString(last, StandardCharsets.UTF_8));
+		if (Files.isRegularFile(last)) {
+			Path readDir = backupsDir.resolve(new String(Files.readAllBytes(last), StandardCharsets.UTF_8));
 			
-			if (readDir.isDirectory())
-				return readDir;
+			if (Files.isDirectory(readDir)) return readDir;
 		}
 		
 		return last;
 	}
 	
-	public static List<Backup> listAllBackups(File backupsDir) {
-		if (!backupsDir.isDirectory()) return ImmutableList.of();
+	public static List<Backup> listAllBackups(Path backupsDir) {
+		if (!Files.isDirectory(backupsDir)) return ImmutableList.of();
 		
 		List<Backup> list = new ArrayList<>();
 		
-		for (File file : backupsDir.listFiles())
-			if (new File(file, "backupMetadata.dat").isFile())
-				list.add(Backup.getBackup(file));
+		try {
+			for (Path path : FileHelper.listFiles(backupsDir))
+				if (Files.isRegularFile(path.resolve("backupMetadata.dat")))
+					list.add(Backup.getBackup(path));
+		} catch (IOException ex) {
+			BackupsMod.logger.error("Error trying to list backups", ex);
+		}
 		
 		list.sort((b1, b2) -> b2.time.compareTo(b1.time));
 		
@@ -221,24 +221,24 @@ public final class BackupHelper {
 	}
 	
 	public static class Backup {
-		public final File dir;
+		public final Path dir;
 		public final int format;
 		public final BackupReason reason;
 		public final Instant time;
 		public final String mcVersion;
 		protected String label;
 		
-		private static final Map<File, Backup> cache = new HashMap<>();
+		private static final Map<Path, Backup> cache = new HashMap<>();
 		
-		public static Backup getBackup(File backupDir) {
-			backupDir = FileHelper.normalize(backupDir);
-			File metadataFile = new File(backupDir, "backupMetadata.dat");
+		public static Backup getBackup(Path backupDir) {
+			backupDir = backupDir.toAbsolutePath().normalize();
+			Path metadataFile = backupDir.resolve("backupMetadata.dat");
 			
-			if (!metadataFile.isFile()) return null;
+			if (!Files.isRegularFile(metadataFile)) return null;
 			if (cache.containsKey(backupDir)) return cache.get(backupDir);
 			
 			try {
-				NBTTagCompound tag = CompressedStreamTools.read(metadataFile);
+				NBTTagCompound tag = CompressedStreamTools.read(metadataFile.toFile());
 				BackupReason reason = BackupReason.values()[tag.getByte("Reason")];
 				Instant time = Instant.ofEpochSecond(tag.getLong("Time"));
 				String label = tag.hasKey("Label", 8) ? tag.getString("Label") : null;
@@ -249,7 +249,7 @@ public final class BackupHelper {
 			}
 		}
 
-		protected Backup(File dir, int format, BackupReason reason, Instant time, String mcVersion, String label) {
+		protected Backup(Path dir, int format, BackupReason reason, Instant time, String mcVersion, String label) {
 			this.dir = dir;
 			this.format = format;
 			this.reason = reason;
@@ -270,7 +270,7 @@ public final class BackupHelper {
 			
 			if (label != null) tag.setString("Label", label);
 			
-			CompressedStreamTools.write(tag, new File(dir, "backupMetadata.dat"));
+			CompressedStreamTools.write(tag, dir.resolve("backupMetadata.dat").toFile());
 		}
 		
 		public void setLabel(String label) {

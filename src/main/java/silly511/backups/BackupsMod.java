@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -43,7 +45,7 @@ import silly511.backups.gui.BackupsOnlyWorldEntry;
 import silly511.backups.helpers.FileHelper;
 
 @EventBusSubscriber
-@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.5.5", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
+@Mod(modid = BackupsMod.modid, name = "Backups", version = "1.5.6", acceptableRemoteVersions = "*", updateJSON = "https://raw.githubusercontent.com/Silly511/Backups-Mod/master/update.json")
 public class BackupsMod {
 	
 	public static final String modid = "backups";
@@ -71,10 +73,6 @@ public class BackupsMod {
 				
 			}
 			
-			if (version <= 0 && backupsDir.exists()) {
-				backupsDir.renameTo(new File("backups_oldformat"));
-			}
-			
 			backupsDir.mkdirs();
 			FileUtils.write(versionFile, "1", StandardCharsets.UTF_8);
 		} catch (IOException ex) {
@@ -94,9 +92,9 @@ public class BackupsMod {
 	
 	@EventHandler
 	public void serverStopped(FMLServerStoppedEvent event) {
-		File tempWorldsDir = new File("tempWorlds");
+		Path tempWorldsDir = Paths.get("tempWorlds");
 		
-		if (Files.isDirectory(tempWorldsDir.toPath(), LinkOption.NOFOLLOW_LINKS)) {
+		if (Files.isDirectory(tempWorldsDir, LinkOption.NOFOLLOW_LINKS)) {
 			synchronized (RegionFileCache.class) {
 				RegionFileCache.clearRegionFileReferences();
 				RegionFileCache.REGIONS_BY_FILE = new HashMap<>();

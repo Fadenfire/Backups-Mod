@@ -1,7 +1,7 @@
 package silly511.backups.commands;
 
-import java.io.File;
 import java.lang.reflect.Field;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -46,9 +46,9 @@ public class RestoreWorldCommandServer extends CommandBase {
 	public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException {
 		if (args.length < 1) throw new WrongUsageException("commands.backups.restoreworld.usage");
 		
-		File worldDir = DimensionManager.getCurrentSaveRootDirectory();
+		Path worldDir = DimensionManager.getCurrentSaveRootDirectory().toPath();
 		Backup backup = RestoreCommand.parseBackup(args[0]);
-		File tempDir = new File(server.getDataDirectory(), "temp");
+		Path tempDir = server.getDataDirectory().toPath().resolve("temp");
 		
 		//I really don't like this, but it works and the alternative is ASM so I'm keeping it for now
 		try {
@@ -61,7 +61,7 @@ public class RestoreWorldCommandServer extends CommandBase {
 				Thread oldHook = null;
 				
 				for (Thread hook : hooks.values())
-					if (hook.getClass().getEnclosingClass() == MinecraftServer.class) {
+					if (hook.getClass().getEnclosingClass() == MinecraftServer.class && hook.getName().contains("Server Shutdown Thread")) {
 						oldHook = hook;
 						break;
 					}
@@ -74,14 +74,14 @@ public class RestoreWorldCommandServer extends CommandBase {
 					finalOldHook.run();
 					
 					try {
-						System.out.println("[Backups]: Restoring backup");
+						System.out.println("[BackupsMod]: Restoring backup");
 						
 						BackupHelper.restoreBackup(backup.dir, worldDir, tempDir, null);
-						BackupHelper.setLastBackup(backup.dir.getParentFile(), backup.dir);
+						BackupHelper.setLastBackup(backup.dir.getParent(), backup.dir);
 						
-						System.out.println("[Backups]: Backup restored, please restart server");
+						System.out.println("[BackupsMod]: Backup restored, please restart server");
 					} catch (Exception ex) {
-						System.out.println("[Backups]: Error restoring backup");
+						System.out.println("[BackupsMod]: Error restoring backup");
 						ex.printStackTrace();
 					}
 				}, "Server Shutdown Thread (Wrapped by Backup Restore Thread)");

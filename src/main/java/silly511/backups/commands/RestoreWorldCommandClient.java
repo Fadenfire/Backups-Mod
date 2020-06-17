@@ -1,6 +1,7 @@
 package silly511.backups.commands;
 
-import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -49,7 +50,7 @@ public class RestoreWorldCommandClient extends CommandBase {
 	public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException {
 		if (args.length < 1) throw new WrongUsageException("commands.backups.restoreworld.usage");
 		
-		File worldDir = DimensionManager.getCurrentSaveRootDirectory();
+		Path worldDir = DimensionManager.getCurrentSaveRootDirectory().toPath();
 		Backup backup = RestoreCommand.parseBackup(args[0]);
 		Minecraft mc = Minecraft.getMinecraft();
 		
@@ -67,8 +68,8 @@ public class RestoreWorldCommandClient extends CommandBase {
 					Thread.sleep(2000);
 				} catch (InterruptedException ex) {}
 				
-				BackupHelper.restoreBackup(backup.dir, worldDir, new File("temp"), null);
-				BackupHelper.setLastBackup(backup.dir.getParentFile(), backup.dir);
+				BackupHelper.restoreBackup(backup.dir, worldDir, Paths.get("temp"), null);
+				BackupHelper.setLastBackup(backup.dir.getParent(), backup.dir);
 			}));
 		});
 	}

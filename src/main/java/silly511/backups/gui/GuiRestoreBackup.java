@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -53,8 +55,8 @@ public class GuiRestoreBackup extends GuiScreen {
 	
 	private GuiScreen parentScreen;
 	private String worldName;
-	private File worldDir;
-	private File backupsDir;
+	private Path worldDir;
+	private Path backupsDir;
 	
 	private String calculatingText;
 	private String restoreTooltip;
@@ -73,8 +75,8 @@ public class GuiRestoreBackup extends GuiScreen {
 		parentScreen = guiSelectWorld;
 		
 		worldName = worldSummary.getDisplayName();
-		worldDir = new File("saves", worldSummary.getFileName());
-		backupsDir = new File(Config.backupsDir, worldSummary.getFileName());
+		worldDir = Paths.get("saves", worldSummary.getFileName());
+		backupsDir = Paths.get(Config.backupsDir, worldSummary.getFileName());
 	}
 	
 	@Override
@@ -144,13 +146,13 @@ public class GuiRestoreBackup extends GuiScreen {
 		} else if (button.id == 2) {
 			mc.displayGuiScreen(new GuiLabelBackup(this, backup));
 		} else if (button.id == 3) {
-			File tempWorldDir = new File("tempWorlds", String.valueOf(new Random().nextInt()));
+			Path tempWorldDir = Paths.get("tempWorlds", String.valueOf(new Random().nextInt()));
 			
 			mc.displayGuiScreen(new GuiRestoreTask(status -> {
 				status.accept("gui.backups.loadingBackup");
 				
 				//Restore backup to temp dir, but without region files
-				BackupHelper.restoreBackup(backup.dir, tempWorldDir, new File("temp"), f -> f.endsWith(".mca"));
+				BackupHelper.restoreBackup(backup.dir, tempWorldDir, Paths.get("temp"), f -> f.endsWith(".mca"));
 			}, () -> {
 				//Add custom region file cache that will load region files from the backup
 				synchronized (RegionFileCache.class) {
@@ -158,7 +160,12 @@ public class GuiRestoreBackup extends GuiScreen {
 					RegionFileCache.REGIONS_BY_FILE = new LoadFromBackupMap(backup.dir, tempWorldDir);
 				}
 				
-				mc.launchIntegratedServer(".." + File.separator + tempWorldDir, worldName, null);
+				try {
+					mc.launchIntegratedServer(".." + File.separator + tempWorldDir, worldName, null);
+				} catch (Exception e) {
+					BackupsMod.logger.error("ffdsf", e);
+					mc.displayGuiScreen(null);
+				}
 			}));
 		} else if (button.id == 4) {
 			String message = I18n.format("gui.backups.confirmDelete", list.selected.size());
@@ -180,13 +187,13 @@ public class GuiRestoreBackup extends GuiScreen {
 				mc.displayGuiScreen(this);
 			} else if (id == 0) {
 				mc.displayGuiScreen(new GuiRestoreTask(parentScreen, status -> {
-					if (worldDir.isDirectory()) {
+					if (Files.isDirectory(worldDir)) {
 						status.accept("gui.backups.makingBackup");
 						BackupHelper.backup(worldDir, backupsDir, BackupReason.RESTORE, null);
 					}
 					
 					status.accept("gui.backups.restoring");
-					BackupHelper.restoreBackup(backup.dir, worldDir, new File("temp"), null);
+					BackupHelper.restoreBackup(backup.dir, worldDir, Paths.get("temp"), null);
 					BackupHelper.setLastBackup(backupsDir, backup.dir);
 				}));
 			} else if (id == 4) {
@@ -350,8 +357,8 @@ public class GuiRestoreBackup extends GuiScreen {
 					for (BackupsListEntry entry : Lists.reverse(entries)) {
 						long size = 0;
 						
-						for (File file : FileHelper.listFiles(entry.backup.dir, false)) {
-							BasicFileAttributes attr = Files.readAttributes(file.toPath(), BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+						for (Path path : FileHelper.listFilesDeep(entry.backup.dir, false)) {
+							BasicFileAttributes attr = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
 							
 							if (!attr.isDirectory() && fileKeys.add(getFileKey(attr)))
 								size += attr.size();
@@ -404,18 +411,18 @@ public class GuiRestoreBackup extends GuiScreen {
 				String reason = I18n.format(backup.reason != null ? backup.reason.tranKey : "backups.reason.unknown");
 				this.desc = reason + ", " + backup.mcVersion + " (";
 				
-				ResourceLocation iconLoc = new ResourceLocation(BackupsMod.modid, "backup/" + worldDir.getName() + "/" + backup.dir.getName() + "/icon");
-				File iconFile = new File(backup.dir, "icon.png");
+				ResourceLocation iconLoc = new ResourceLocation(BackupsMod.modid, "backup/" + worldDir.getFileName() + "/" + backup.dir.getFileName() + "/icon");
+				Path iconFile = backup.dir.resolve("icon.png");
 				BufferedImage image = null;
 				
 				try {
-					if (iconFile.isFile()) {
-						image = ImageIO.read(iconFile);
+					if (Files.isRegularFile(iconFile)) {
+						image = ImageIO.read(iconFile.toFile());
 					} else {
-						File metadataFile = new File(backup.dir, "backupMetadata.dat");
+						Path metadataFile = backup.dir.resolve("backupMetadata.dat");
 						
-						if (metadataFile.isFile()) {
-							NBTTagCompound tag = CompressedStreamTools.read(metadataFile);
+						if (Files.isRegularFile(metadataFile)) {
+							NBTTagCompound tag = CompressedStreamTools.read(metadataFile.toFile());
 							
 							if (tag.hasKey("Icon"))
 								image = ImageHelper.fromCompressedBytes(tag.getByteArray("Icon"), 64, 64);

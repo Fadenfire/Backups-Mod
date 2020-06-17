@@ -2,6 +2,8 @@ package silly511.backups;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import it.unimi.dsi.fastutil.ints.Int2BooleanMap;
 import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
@@ -23,13 +25,13 @@ import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent.Phase;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import silly511.backups.Config.AnnounceBackupsMode;
 import silly511.backups.helpers.BackupHelper;
 import silly511.backups.helpers.BackupHelper.Backup;
 import silly511.backups.helpers.BackupHelper.BackupReason;
-import silly511.backups.helpers.FileHelper;
 import silly511.backups.helpers.ImageHelper;
 
 @EventBusSubscriber(modid = BackupsMod.modid)
@@ -47,6 +49,8 @@ public class BackupManager {
 	
 	@SubscribeEvent
 	public static void serverTick(TickEvent.ServerTickEvent event) {
+		if (event.phase != Phase.END) return;
+		
 		PlayerList playerList = FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList();
 		
 		if (worldCapability == null) {
@@ -93,12 +97,12 @@ public class BackupManager {
 		disableSaving();
 		
 		File saveDir = DimensionManager.getCurrentSaveRootDirectory();
-		thread = new BackupThread(saveDir, new File(Config.backupsDir, saveDir.getName()), reason, label);
+		thread = new BackupThread(saveDir.toPath(), Paths.get(Config.backupsDir, saveDir.getName()), reason, label);
 		thread.start();
 	}
 	
-	public static File getCurrentBackupsDir() {
-		return new File(Config.backupsDir, DimensionManager.getCurrentSaveRootDirectory().getName());
+	public static Path getCurrentBackupsDir() {
+		return Paths.get(Config.backupsDir, DimensionManager.getCurrentSaveRootDirectory().getName());
 	}
 	
 	public static boolean isBackingUp() {
@@ -106,7 +110,7 @@ public class BackupManager {
 	}
 	
 	public static boolean isTempWorld() {
-		return FileHelper.equals(DimensionManager.getCurrentSaveRootDirectory().getParentFile(), new File("tempWorlds"));
+		return Paths.get("tempWorlds").toAbsolutePath().equals(DimensionManager.getCurrentSaveRootDirectory().getParentFile().toPath().toAbsolutePath().normalize());
 	}
 	
 	private static void disableSaving() {
@@ -163,8 +167,8 @@ public class BackupManager {
 	}
 	
 	public static class BackupThread extends Thread {
-		private File worldDir;
-		private File backupsDir;
+		private Path worldDir;
+		private Path backupsDir;
 		private BackupReason reason;
 		private String label;
 		
@@ -174,7 +178,7 @@ public class BackupManager {
 		
 		private boolean errored;
 
-		public BackupThread(File worldDir, File backupsDir, BackupReason reason, String label) {
+		public BackupThread(Path worldDir, Path backupsDir, BackupReason reason, String label) {
 			this.worldDir = worldDir;
 			this.backupsDir = backupsDir;
 			this.reason = reason;

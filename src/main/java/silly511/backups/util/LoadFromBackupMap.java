@@ -15,12 +15,12 @@ public class LoadFromBackupMap extends HashMap<File, RegionFile> {
 
 	private static final long serialVersionUID = 1L;
 	
-	private File backupDir;
-	private File tempWorldDir;
+	private Path backupDir;
+	private Path tempWorldDir;
 	
-	public LoadFromBackupMap(File backupDir, File tempWorldDir) {
+	public LoadFromBackupMap(Path backupDir, Path tempWorldDir) {
 		this.backupDir = backupDir;
-		this.tempWorldDir = tempWorldDir.getAbsoluteFile();
+		this.tempWorldDir = tempWorldDir.toAbsolutePath().normalize();
 	}
 	
 	@Override
@@ -28,12 +28,12 @@ public class LoadFromBackupMap extends HashMap<File, RegionFile> {
 		RegionFile regionFile = super.get(key);
 		
 		if (regionFile == null && key instanceof File && !((File) key).exists()) {
-			File file = FileHelper.normalize((File) key);
-			Path backupFile = FileHelper.relativizeAdd(tempWorldDir, file, backupDir, ".gz");
+			Path path = ((File) key).toPath().toAbsolutePath().normalize();
+			Path backupFile = FileHelper.relativizeAdd(tempWorldDir, path, backupDir, ".gz");
 			
 			if (Files.isRegularFile(backupFile))
 				try (InputStream in = new GzipInputStream(Files.newInputStream(backupFile))) {
-					Files.copy(in, file.toPath());
+					Files.copy(in, path);
 				} catch (IOException ex) {
 					BackupsMod.logger.error("Error loading region file from backup", ex);
 				}

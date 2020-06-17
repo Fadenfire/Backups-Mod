@@ -1,9 +1,9 @@
 package silly511.backups.commands;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -115,7 +115,7 @@ public class RestoreCommand extends CommandBase {
 		if (!world.isAreaLoaded(box)) throw new CommandException("commands.clone.outOfWorld");
 		
 		String dimDir = sender.getEntityWorld().provider.getSaveFolder();
-		GzippedRegionLoader loader = new GzippedRegionLoader(dimDir == null ? backup.dir : new File(backup.dir, dimDir));
+		GzippedRegionLoader loader = new GzippedRegionLoader(dimDir == null ? backup.dir.toFile() : backup.dir.resolve(dimDir).toFile());
 		
 		LinkedList<BlockPos> blocks = new LinkedList<>();
 		
@@ -169,11 +169,11 @@ public class RestoreCommand extends CommandBase {
 		EntityPlayer player = getPlayer(server, sender, args[1]);
 		Backup backup = parseBackup(args[2]);
 		
-		File playerFile = new File(new File(backup.dir, "playerdata"), player.getCachedUniqueIdString() + ".dat.gz");
+		Path playerFile = backup.dir.resolve("playerdata").resolve(player.getCachedUniqueIdString() + ".dat.gz");
 		NBTTagCompound tag = null;
 		
-		if (playerFile.exists())
-			try (InputStream in = new GzipInputStream(new FileInputStream(playerFile))) {
+		if (Files.exists(playerFile))
+			try (InputStream in = new GzipInputStream(Files.newInputStream(playerFile))) {
 				tag = CompressedStreamTools.readCompressed(in);
 			} catch (IOException ex) {
 				BackupsMod.logger.error("Unable to restore player", ex);

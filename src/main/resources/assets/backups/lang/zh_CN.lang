@@ -1,0 +1,76 @@
+#PARSE_ESCAPES
+
+backups.temp_world_warning=由于您在备份中，因此不会保存任何更改
+
+backups.reason.unknown=未知
+backups.reason.scheduled=自动
+backups.reason.user=用户手动
+backups.reason.restore=还原
+backups.reason.world_join=进入世界
+
+gui.backups.backupsbutton.tooltip=按下Shift以使用重建功能
+gui.backups.title=备份
+gui.backups.calculating=计算中
+gui.backups.restore=还原
+gui.backups.clearLabel=清除标签
+gui.backups.setLabel=设置标签
+gui.backups.enter=进入备份
+gui.backups.delete=删除
+gui.backups.restore.tooltip=为该世界创建一个备份并还原到选定的备份
+gui.backups.enter.tooltip=像加载世界一样加载这个备份,任何更改都不会被保存
+gui.backups.confirmDelete=是否确定删除 %s 备份
+gui.backups.confirmRestore1=是否确定将 %s 还原到 %s
+gui.backups.confirmRestore2=在该世界还原前将会创建它的备份
+gui.backups.makingBackup=创建备份中
+gui.backups.restoring=还原中
+gui.backups.loadingBackup=读取备份中
+gui.backups.errorRestoring1=未能还原备份
+gui.backups.errorRestoring2=备份可能损坏，检查日志以获取更多信息
+
+commands.backups.backupsmod.usage=/backupsmod <backup|lastbackup|restore> ...
+
+commands.backups.lastbackup.usage=/backupsmod lastbackup
+commands.backups.lastbackup.noBackups=无备份
+commands.backups.lastbackup.success=最后一次备份: %s (%s 之前)
+
+commands.backups.listbackups.usage=/backupsmod listbackups
+
+commands.backups.backup.usage=/backupsmod backup [label ...]
+commands.backups.backup.inProgress=备份已在进行中
+commands.backups.backup.tempWorld=无法在备份中进行备份
+commands.backups.backup.success=开始备份
+
+commands.backups.restore.usage=/backupsmod restore <blocks|player> ...
+commands.backups.restore.invalidDate="%s" 不是有效的时间
+commands.backups.restore.notABackup=备份不存在
+commands.backups.restore.error=发生错误，备份可能损坏
+commands.backups.restore.area.usage=/backupsmod restore blocks <x1> <y1> <z1> <x2> <y2> <z2> <backup>
+commands.backups.restore.area.success=还原 %s 方块 (来自 %s )
+commands.backups.restore.player.usage=/backupsmod restore player <player> <backup>
+commands.backups.restore.player.success= 还原 %s 的背包到 %s
+
+commands.backups.restoreworld.usage=/backupsmod restoreworld <backup>
+
+backups.misc.today=今天
+backups.misc.yesterday=昨天
+
+backups.misc.weekday.monday=周一
+backups.misc.weekday.tuesday=周二
+backups.misc.weekday.wednesday=周三
+backups.misc.weekday.thursday=周四
+backups.misc.weekday.friday=周五
+backups.misc.weekday.saturday=周六
+backups.misc.weekday.sunday=周日
+
+backups.misc.month.january=一月
+backups.misc.month.february=二月
+backups.misc.month.march=三月
+backups.misc.month.april=四月
+backups.misc.month.may=五月
+backups.misc.month.june=六月
+backups.misc.month.july=七月
+backups.misc.month.august=八月
+backups.misc.month.september=九月
+backups.misc.month.october=十月
+backups.misc.month.november=十一月
+backups.misc.month.december=十二月
