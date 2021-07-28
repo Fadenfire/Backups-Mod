@@ -4,9 +4,11 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
 
-import it.unimi.dsi.fastutil.ints.Int2BooleanMap;
-import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
@@ -19,6 +21,7 @@ import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.MinecraftException;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
+import net.minecraft.world.storage.ISaveHandler;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.fml.common.FMLCommonHandler;
@@ -40,7 +43,7 @@ public class BackupManager {
 	private static BackupsWorldCapability worldCapability;
 	private static boolean shouldBackup;
 	private volatile static BackupThread thread;
-	private static Int2BooleanMap oldSaveStates;
+	private static Map<WorldServer, Boolean> oldSaveStates;
 	
 	public static void serverStarted() {
 		worldCapability = null;
@@ -94,10 +97,11 @@ public class BackupManager {
 		
 		BackupsMod.logger.info("Starting backup");
 		postTagMessage("Started backup");
-		disableSaving();
 		
+		Set<ISaveHandler> saveHandlers = disableSaving();
 		File saveDir = DimensionManager.getCurrentSaveRootDirectory();
-		thread = new BackupThread(saveDir.toPath(), Paths.get(Config.backupsDir, saveDir.getName()), reason, label);
+		
+		thread = new BackupThread(saveHandlers, saveDir.toPath(), Paths.get(Config.backupsDir, saveDir.getName()), reason, label);
 		thread.start();
 	}
 	
@@ -113,28 +117,31 @@ public class BackupManager {
 		return Paths.get("tempWorlds").toAbsolutePath().equals(DimensionManager.getCurrentSaveRootDirectory().getParentFile().toPath().toAbsolutePath().normalize());
 	}
 	
-	private static void disableSaving() {
+	private static Set<ISaveHandler> disableSaving() {
 		MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
 		BackupsMod.logger.info("Disabling world saving");
 		
 		server.getPlayerList().saveAllPlayerData();
 		
-		oldSaveStates = new Int2BooleanOpenHashMap(server.worlds.length);
+		oldSaveStates = new WeakHashMap<>();
+		Set<ISaveHandler> saveHandlers = new HashSet<>();
 		
 		for (WorldServer worldServer : server.worlds) {
 			if (worldServer == null) continue;
 			
-			oldSaveStates.put(worldServer.provider.getDimension(), worldServer.disableLevelSaving);
+			oldSaveStates.put(worldServer, worldServer.disableLevelSaving);
 			
 			try {
 				worldServer.saveAllChunks(true, null);
-				worldServer.flush();
 			} catch (MinecraftException ex) {
-				BackupsMod.logger.warn(ex.getMessage());
+				BackupsMod.logger.warn("Error saving chunks", ex);
 			}
 			
+			saveHandlers.add(worldServer.getSaveHandler());
 			worldServer.disableLevelSaving = true;
 		}
+		
+		return saveHandlers;
 	}
 	
 	private static void restoreSaving() {
@@ -142,10 +149,13 @@ public class BackupManager {
 		BackupsMod.logger.info("Restoring world saving");
 		
 		for (WorldServer worldServer : server.worlds) {
-			int dimId = worldServer.provider.getDimension();
-			
-			if (worldServer != null && oldSaveStates.containsKey(dimId))
-				worldServer.disableLevelSaving = oldSaveStates.get(dimId);
+			if (worldServer != null) {
+				Boolean oldSaveState = oldSaveStates.get(worldServer);
+				
+				if (oldSaveState != null) {
+					worldServer.disableLevelSaving = oldSaveState;
+				}
+			}
 		}
 		
 		oldSaveStates = null;
@@ -167,6 +177,8 @@ public class BackupManager {
 	}
 	
 	public static class BackupThread extends Thread {
+		private Set<ISaveHandler> saveHandlers;
+		
 		private Path worldDir;
 		private Path backupsDir;
 		private BackupReason reason;
@@ -178,7 +190,8 @@ public class BackupManager {
 		
 		private boolean errored;
 
-		public BackupThread(Path worldDir, Path backupsDir, BackupReason reason, String label) {
+		public BackupThread(Set<ISaveHandler> saveHandlers, Path worldDir, Path backupsDir, BackupReason reason, String label) {
+			this.saveHandlers = saveHandlers;
 			this.worldDir = worldDir;
 			this.backupsDir = backupsDir;
 			this.reason = reason;
@@ -191,11 +204,22 @@ public class BackupManager {
 		@Override
 		public void run() {
 			try {
+				BackupsMod.logger.info("Flushing world data to disk");
+				
+				for (ISaveHandler saveHandler : saveHandlers) {
+					saveHandler.flush();
+				}
+				
+				saveHandlers.clear();
+				
 				boolean isClient = FMLCommonHandler.instance().getSide() == Side.CLIENT;
 				
-				if (Config.trimming.trimmingEnabled)
+				if (Config.trimming.trimmingEnabled) {
+					BackupsMod.logger.info("Trimming old backups");
 					BackupHelper.trimBackups(backupsDir);
+				}
 				
+				BackupsMod.logger.info("Creating backup");
 				Backup backup = BackupHelper.backup(worldDir, backupsDir, reason, isClient ? () -> fetchIcon() : null);
 				
 				if (label != null) {
